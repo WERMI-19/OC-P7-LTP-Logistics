@@ -1,0 +1,18 @@
+# Fichiers système macOS
+.DS_Store
+
+# Paramètres de développement
+jsconfig.json
+.eslintrc.json
+
+# Salesforce DX metadata
+.sfdx
+.localdevserver
+
+# Node modules (si tu fais du LWC local avec Node)
+node_modules
+
+# Logs
+npm-debug.log
+yarn-debug.log
+yarn-error.log
