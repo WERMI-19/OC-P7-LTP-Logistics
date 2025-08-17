@@ -1,0 +1,1 @@
+public with sharing class OrderTriggerHandler { public static void beforeUpdate(List<Order> newList){ OrderRulesService.validateMinimumItems(newList); } }

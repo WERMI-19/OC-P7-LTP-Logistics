@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- Nom lisible par l'utilisateur -->
+    <label>Launch Delivery</label>
+
+    <!-- Activation manuelle NON requise -->
+    <hasActivationRequired>false</hasActivationRequired>
+
+    <!-- Accès Lightning Experience -->
+    <userPermissions>
+        <enabled>true</enabled>
+        <name>LightningExperienceUser</name>
+    </userPermissions>
+
+    <!-- Permission personnalisée pour le LWC "Lancer la livraison" -->
+    <customPermissions>
+        <enabled>true</enabled>
+        <name>Can_Launch_Delivery</name>
+    </customPermissions>
+
+    <!-- CRUD Objets -->
+    <!-- Shipment__c : créer / lire / éditer -->
+    <objectPermissions>
+        <allowCreate>true</allowCreate>
+        <allowDelete>false</allowDelete>
+        <allowEdit>true</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>false</modifyAllRecords>
+        <object>Shipment__c</object>
+        <viewAllRecords>false</viewAllRecords>
+    </objectPermissions>
+
+    <!-- Carrier__c : lecture seule -->
+    <objectPermissions>
+        <allowCreate>false</allowCreate>
+        <allowDelete>false</allowDelete>
+        <allowEdit>false</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>false</modifyAllRecords>
+        <object>Carrier__c</object>
+        <viewAllRecords>false</viewAllRecords>
+    </objectPermissions>
+
+    <!-- Standard : lecture -->
+    <objectPermissions>
+        <allowCreate>false</allowCreate>
+        <allowDelete>false</allowDelete>
+        <allowEdit>false</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>false</modifyAllRecords>
+        <object>Product2</object>
+        <viewAllRecords>false</viewAllRecords>
+    </objectPermissions>
+    <objectPermissions>
+        <allowCreate>false</allowCreate>
+        <allowDelete>false</allowDelete>
+        <allowEdit>false</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>false</modifyAllRecords>
+        <object>Pricebook2</object>
+        <viewAllRecords>false</viewAllRecords>
+    </objectPermissions>
+    <objectPermissions>
+        <allowCreate>false</allowCreate>
+        <allowDelete>false</allowDelete>
+        <allowEdit>false</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>false</modifyAllRecords>
+        <object>PricebookEntry</object>
+        <viewAllRecords>false</viewAllRecords>
+    </objectPermissions>
+
+    <!-- Orders : lecture + édition -->
+    <objectPermissions>
+        <allowCreate>false</allowCreate>
+        <allowDelete>false</allowDelete>
+        <allowEdit>true</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>false</modifyAllRecords>
+        <object>Order</object>
+        <viewAllRecords>false</viewAllRecords>
+    </objectPermissions>
+    <objectPermissions>
+        <allowCreate>false</allowCreate>
+        <allowDelete>false</allowDelete>
+        <allowEdit>false</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>false</modifyAllRecords>
+        <object>OrderItem</object>
+        <viewAllRecords>false</viewAllRecords>
+    </objectPermissions>
+
+    <!-- FLS Shipment__c (NE PAS inclure les champs Required comme Order__c) -->
+    <fieldPermissions><field>Shipment__c.Carrier__c</field><editable>true</editable><readable>true</readable></fieldPermissions>
+    <fieldPermissions><field>Shipment__c.Status__c</field><editable>true</editable><readable>true</readable></fieldPermissions>
+    <fieldPermissions><field>Shipment__c.ShippingCost__c</field><editable>true</editable><readable>true</readable></fieldPermissions>
+    <fieldPermissions><field>Shipment__c.EstimatedLeadTimeHours__c</field><editable>true</editable><readable>true</readable></fieldPermissions>
+    <fieldPermissions><field>Shipment__c.DestinationCountry__c</field><editable>true</editable><readable>true</readable></fieldPermissions>
+    <fieldPermissions><field>Shipment__c.DestinationRegion__c</field><editable>true</editable><readable>true</readable></fieldPermissions>
+    <fieldPermissions><field>Shipment__c.DestinationPostalCode__c</field><editable>true</editable><readable>true</readable></fieldPermissions>
+    <fieldPermissions><field>Shipment__c.ZoneCode__c</field><editable>true</editable><readable>true</readable></fieldPermissions>
+    <fieldPermissions><field>Shipment__c.ShipDate__c</field><editable>true</editable><readable>true</readable></fieldPermissions>
+    <fieldPermissions><field>Shipment__c.EstimatedDeliveryDate__c</field><editable>true</editable><readable>true</readable></fieldPermissions>
+    <fieldPermissions><field>Shipment__c.ActualDeliveryDate__c</field><editable>true</editable><readable>true</readable></fieldPermissions>
+    <fieldPermissions><field>Shipment__c.TrackingNumber__c</field><editable>true</editable><readable>true</readable></fieldPermissions>
+
+    <!-- FLS Carrier__c : lecture seule -->
+    <fieldPermissions><field>Carrier__c.Code__c</field><editable>false</editable><readable>true</readable></fieldPermissions>
+    <fieldPermissions><field>Carrier__c.Active__c</field><editable>false</editable><readable>true</readable></fieldPermissions>
+    <fieldPermissions><field>Carrier__c.SupportsBusiness__c</field><editable>false</editable><readable>true</readable></fieldPermissions>
+    <fieldPermissions><field>Carrier__c.SupportsConsumers__c</field><editable>false</editable><readable>true</readable></fieldPermissions>
+
+    <!-- Visibilité des onglets -->
+    <tabSettings>
+        <tab>Shipment__c</tab>
+        <visibility>Visible</visibility>
+    </tabSettings>
+    <tabSettings>
+        <tab>Carrier__c</tab>
+        <visibility>Visible</visibility>
+    </tabSettings>
+    <tabSettings>
+        <tab>standard-Order</tab>
+        <visibility>Visible</visibility>
+    </tabSettings>
+</PermissionSet>

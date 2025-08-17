@@ -1,0 +1,114 @@
+<template>
+    <!-- Spinner global -->
+    <template if:true={loading}>
+        <lightning-spinner alternative-text="Chargement" size="medium"></lightning-spinner>
+    </template>
+
+    <!-- Garde-permission -->
+    <template if:false={hasPermission}>
+        <lightning-card title="Lancer la livraison" icon-name="utility:lock">
+            <div class="slds-p-around_medium slds-text-color_error">
+                Accès refusé : permission "Can_Launch_Delivery" requise.
+            </div>
+        </lightning-card>
+    </template>
+
+    <template if:true={hasPermission}>
+        <lightning-card title="Lancer la livraison" icon-name="custom:custom63">
+            <div class="slds-p-around_medium">
+                
+                <!-- Zone de livraison (selon cahier des charges FR/BE/CH/LU) -->
+                <div class="slds-grid slds-gutters slds-wrap">
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <lightning-combobox
+                            name="zone"
+                            label="Zone / Pays"
+                            value={zoneCode}
+                            placeholder="Sélectionner un pays"
+                            options={zoneOptions}
+                            onchange={handleZoneChange}>
+                        </lightning-combobox>
+                    </div>
+
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-align_absolute-center action-col">
+                        <lightning-button variant="brand" label="Charger les options"
+                            title="Calculer les options de transport"
+                            onclick={loadOptions}>
+                        </lightning-button>
+                    </div>
+                </div>
+
+                <!-- Résumés fastest / cheapest -->
+                <template if:true={hasData}>
+                    <div class="slds-grid slds-gutters slds-m-top_large">
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                            <article class="slds-tile slds-tile_board">
+                                <h3 class="slds-tile__title slds-truncate" title="Plus rapide">
+                                    <span class="slds-badge slds-theme_success slds-m-right_x-small">Plus rapide</span>
+                                    {fastestLabel}
+                                </h3>
+                                <div class="slds-tile__detail slds-text-title_caps">
+                                    <p if:true={fastest}>Délai (jours) : {fastest.leadTimeDays}</p>
+                                    <p if:true={fastest}>Prix : {fastest.price}</p>
+                                </div>
+                            </article>
+                        </div>
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                            <article class="slds-tile slds-tile_board">
+                                <h3 class="slds-tile__title slds-truncate" title="Moins chère">
+                                    <span class="slds-badge slds-theme_info slds-m-right_x-small">Moins chère</span>
+                                    {cheapestLabel}
+                                </h3>
+                                <div class="slds-tile__detail slds-text-title_caps">
+                                    <p if:true={cheapest}>Délai (jours) : {cheapest.leadTimeDays}</p>
+                                    <p if:true={cheapest}>Prix : {cheapest.price}</p>
+                                </div>
+                            </article>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- Liste des options compatibles -->
+                <template if:true={hasData}>
+                    <div class="slds-m-top_large">
+                        <lightning-radio-group
+                            name="carrierChoice"
+                            label="Choisir un transporteur"
+                            options={radioOptions}
+                            value={selectedCarrier}
+                            onchange={handleCarrierChange}
+                            type="radio">
+                        </lightning-radio-group>
+                    </div>
+
+                    <div class="slds-grid slds-gutters slds-m-top_large">
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                            <lightning-input
+                                type="text"
+                                label="Numéro de suivi (optionnel)"
+                                value={trackingNumber}
+                                onchange={handleTrackingChange}>
+                            </lightning-input>
+                        </div>
+                        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-align_absolute-center action-col">
+                            <lightning-button
+                                variant="brand"
+                                label="Lancer la livraison"
+                                title="Créer Shipment"
+                                onclick={handleLaunch}
+                                disabled={disableLaunch}>
+                            </lightning-button>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- Message si pas d'options -->
+                <template if:true={noData}>
+                    <div class="slds-p-vertical_medium slds-text-align_center slds-text-color_weak">
+                        Aucune option compatible trouvée pour la zone sélectionnée.
+                    </div>
+                </template>
+            </div>
+        </lightning-card>
+    </template>
+</template>

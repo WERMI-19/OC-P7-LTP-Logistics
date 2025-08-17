@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>ServiceLevel__c</fullName>
+    <label>Service Level</label>
+    <type>Picklist</type>
+    <valueSet><valueSetDefinition><sorted>false</sorted>
+        <value><fullName>Economy</fullName><default>true</default><label>Economy</label></value>
+        <value><fullName>Standard</fullName><default>false</default><label>Standard</label></value>
+        <value><fullName>Express</fullName><default>false</default><label>Express</label></value>
+    </valueSetDefinition></valueSet>
+</CustomField>
