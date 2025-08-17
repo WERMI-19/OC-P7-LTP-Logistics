@@ -1,1 +1,87 @@
-public with sharing class TransportOptionService { public class TransportOptionDTO { @AuraEnabled public Id carrierId; @AuraEnabled public String carrierName; @AuraEnabled public String serviceLevel; @AuraEnabled public Decimal price; @AuraEnabled public Integer leadTimeDays; @AuraEnabled public String zoneCode; public TransportOptionDTO init(PricebookEntry pbe){ this.carrierId = pbe.Product2.Carrier__c; this.carrierName = (pbe.Product2.Carrier__r!=null)? pbe.Product2.Carrier__r.Name : null; this.serviceLevel = String.valueOf(pbe.Product2.ServiceLevel__c); this.price = pbe.UnitPrice; this.leadTimeDays = (pbe.get('LeadTimeDays__c')==null)? null : (Integer)pbe.get('LeadTimeDays__c'); this.zoneCode = (String)pbe.get('ZoneCode__c'); return this; } } public class OptionsResponse { @AuraEnabled public List<TransportOptionDTO> compatible; @AuraEnabled public TransportOptionDTO fastest; @AuraEnabled public TransportOptionDTO cheapest; } public static OptionsResponse computeOptions(String zoneCodeOpt){ List<PricebookEntry> entries = PricebookEntrySelector.listActiveByZone(zoneCodeOpt); List<TransportOptionDTO> dtos = new List<TransportOptionDTO>(); for(PricebookEntry pbe: entries){ if(pbe.Product2==null || pbe.Product2.Carrier__c==null) continue; dtos.add(new TransportOptionDTO().init(pbe)); } OptionsResponse res = new OptionsResponse(); res.compatible = dtos; TransportOptionDTO fastest = null, cheapest = null; for(TransportOptionDTO d: dtos){ if(d.leadTimeDays!=null && (fastest==null || d.leadTimeDays < fastest.leadTimeDays)) fastest = d; if(d.price!=null && (cheapest==null || d.price < cheapest.price)) cheapest = d; } res.fastest = fastest; res.cheapest = cheapest; return res; } }
+public with sharing class TransportOptionService {
+
+    // ---------- DTOs ----------
+    public class TransportOptionDTO {
+        @AuraEnabled public Id carrierId;
+        @AuraEnabled public String carrierName;
+        @AuraEnabled public Decimal price;
+        @AuraEnabled public Integer leadTimeDays;
+        @AuraEnabled public String zoneCode;
+        @AuraEnabled public String serviceLevel;
+    }
+
+    public class OptionsResponse {
+        @AuraEnabled public List<TransportOptionDTO> compatible;
+        @AuraEnabled public TransportOptionDTO cheapest;
+        @AuraEnabled public TransportOptionDTO fastest;
+        public OptionsResponse(){ compatible = new List<TransportOptionDTO>(); }
+    }
+
+    // ---------- Logic ----------
+    @AuraEnabled(cacheable=true)
+    public static OptionsResponse computeOptions(String zoneCodeOpt) {
+        if (String.isBlank(zoneCodeOpt)) {
+            throw new AuraHandledException('ZoneCode requis');
+        }
+
+        OptionsResponse res = new OptionsResponse();
+
+        // Pas de filtre sur Pricebook2 : on prend tous les PBE actifs de la zone
+        List<PricebookEntry> entries = [
+            SELECT Id, UnitPrice,
+                   ZoneCode__c, LeadTimeDays__c,
+                   Product2.Id, Product2.Name,
+                   Product2.ServiceLevel__c,
+                   Product2.Carrier__c, Product2.Carrier__r.Name
+            FROM PricebookEntry
+            WHERE IsActive = true
+              AND ZoneCode__c = :zoneCodeOpt
+        ];
+
+        for (PricebookEntry pbe : entries) {
+            if (pbe.Product2 == null) continue;
+
+            TransportOptionDTO dto = new TransportOptionDTO();
+
+            // Fallback si Product2.Carrier__c est vide
+            dto.carrierId    = (pbe.Product2.Carrier__c != null) ? pbe.Product2.Carrier__c : pbe.Product2.Id;
+            dto.carrierName  = (pbe.Product2.Carrier__r != null) ? pbe.Product2.Carrier__r.Name : pbe.Product2.Name;
+
+            dto.serviceLevel = (pbe.Product2.ServiceLevel__c == null)
+                               ? null
+                               : String.valueOf(pbe.Product2.ServiceLevel__c);
+
+            dto.price        = pbe.UnitPrice;
+
+            // ✅ conversion sûre Decimal -> Integer
+            Decimal ld = (Decimal)pbe.get('LeadTimeDays__c');
+            dto.leadTimeDays = (ld == null) ? null : ld.intValue();
+
+            dto.zoneCode     = (String)pbe.get('ZoneCode__c');
+
+            res.compatible.add(dto);
+        }
+
+        // Déterminer moins cher / plus rapide (robuste aux nulls)
+        if (!res.compatible.isEmpty()) {
+            // Cheapest
+            TransportOptionDTO cheapest = null;
+            for (TransportOptionDTO d : res.compatible) {
+                if (d.price == null) continue;
+                if (cheapest == null || d.price < cheapest.price) cheapest = d;
+            }
+            // Si toutes les prices sont null (hautement improbable), prend la première
+            res.cheapest = (cheapest != null) ? cheapest : res.compatible[0];
+
+            // Fastest
+            TransportOptionDTO fastest = null;
+            for (TransportOptionDTO d : res.compatible) {
+                if (d.leadTimeDays == null) continue;
+                if (fastest == null || d.leadTimeDays < fastest.leadTimeDays) fastest = d;
+            }
+            res.fastest = (fastest != null) ? fastest : res.cheapest;
+        }
+
+        return res;
+    }
+}

@@ -7,8 +7,8 @@
         <members>OrderRulesService</members>
         <members>TransportOptionService</members>
         <members>OrderService</members>
-        <members>ShipmentTriggerHandler</members>
         <members>OrderTriggerHandler</members>
+        <members>ShipmentTriggerHandler</members>
         <members>LtpTestDataFactory</members>
         <members>OrderRulesServiceTest</members>
         <members>TransportOptionServiceTest</members>
