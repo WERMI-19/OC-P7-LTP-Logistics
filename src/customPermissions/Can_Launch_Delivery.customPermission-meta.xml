@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<CustomPermission xmlns="http://soap.sforce.com/2006/04/metadata">
-    <!-- Libellé affiché dans l’UI -->
-    <label>Can Launch Delivery</label>
-    <!-- Description simple pour les admins -->
-    <description>Autorise l’accès à l’écran LWC de lancement de livraison sur Order.</description>
-</CustomPermission>

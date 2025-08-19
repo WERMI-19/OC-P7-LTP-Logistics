@@ -1,113 +1,119 @@
-import { LightningElement, api, track } from 'lwc';
-import { ShowToastEvent } from 'lightning/platformShowToastEvent';
-import hasLaunchDelivery from '@salesforce/customPermission/Can_Launch_Delivery';
-import computeTransportOptions from '@salesforce/apex/OrderService.computeTransportOptions';
-import launchDelivery from '@salesforce/apex/OrderService.launchDelivery';
+import { LightningElement, api, track } from 'lwc'; // API LWC de base
+import { ShowToastEvent } from 'lightning/platformShowToastEvent'; // toasts standard
+import hasLaunchPermission from '@salesforce/customPermission/Can_Launch_Delivery'; // Custom Permission
+import computeOptions from '@salesforce/apex/OrderService.computeOptions';   // ✅ calcule DTO options
+import launchDelivery from '@salesforce/apex/OrderService.launchDelivery';   // ✅ crée Shipment__c
 
-/**
- * LTP - Lancer la livraison (Order Record Page)
- * - Respecte SLDS, cahier des charges Projet7
- * - Affiche options compatible + "plus rapide" & "moins chère"
- * - Permet de créer Shipment__c via Apex
- */
 export default class LtpLaunchDelivery extends LightningElement {
-    @api recordId; // Id de la commande (Order)
-    @track loading = false;
-    @track optionsDTO;
-    @track selectedCarrier = null;
-    @track trackingNumber = '';
-    @track zoneCode = 'FR'; // Par défaut : France (cahier des charges)
+    @api recordId;                 // Id de la commande courante (Record Page)
+    @track loading = false;        // État du spinner (UX)
+    @track dto;                    // DTO retourné par Apex (compatible/fastest/cheapest)
+    @track options = [];           // Options formatées {label,value} pour radio-group
+    @track selectedCarrier = null; // Transporteur sélectionné (Id)
+    @track zoneCode;               // <-- La valeur par défaut  dynamique
 
-    // Permissions (masque l'UI si non attribuée)
-    get hasPermission() { return hasLaunchDelivery === true; }
+    // Autorisation: booléen injecté par la Custom Permission (plateforme)
+    get hasPermission() { return hasLaunchPermission === true; } // garde l'UI si true
 
-    // États utiles pour le rendu
-    get hasData() { return this.optionsDTO && this.optionsDTO.compatible && this.optionsDTO.compatible.length > 0; }
-    get noData() { return this.optionsDTO && (!this.optionsDTO.compatible || this.optionsDTO.compatible.length === 0); }
-    get fastest() { return this.optionsDTO?.fastest || null; }
-    get cheapest() { return this.optionsDTO?.cheapest || null; }
+    // Indique s'il y a des options à afficher (radio-group visible)
+    get hasData() { return Array.isArray(this.options) && this.options.length > 0; } // simple check
+
+    // Libellé résumé de l'option la plus rapide (DTO.fastest)
     get fastestLabel() {
-        if (!this.fastest) return '—';
-        return `${this.fastest.carrierName} • ${this.fastest.serviceLevel} • ${this.fastest.price}`;
-    }
-    get cheapestLabel() {
-        if (!this.cheapest) return '—';
-        return `${this.cheapest.carrierName} • ${this.cheapest.serviceLevel} • ${this.cheapest.price}`;
-    }
-    get disableLaunch() {
-        // Autorise le lancement si un transporteur est sélectionné
-        return !this.selectedCarrier;
+        if (!this.dto?.fastest) return '—'; // rien si pas de données
+        const f = this.dto.fastest; // référence rapide
+        return `${f.carrierName} • ${f.serviceLevel} • ${f.price}`; // format compact
     }
 
-    // Combobox zone de livraison (FR/BE/CH/LU)
+    // Libellé résumé de l'option la moins chère (DTO.cheapest)
+    get cheapestLabel() {
+        if (!this.dto?.cheapest) return '—'; // rien si pas de données
+        const c = this.dto.cheapest; // référence rapide
+        return `${c.carrierName} • ${c.serviceLevel} • ${c.price}`; // format compact
+    }
+
+    // État du bouton "Lancer la livraison" : désactivé si pas de sélection ou chargement
+    get disableLaunch() {
+        return !this.selectedCarrier || this.loading; // évite clicks multiples
+    }
+
+    // Liste de zones affichée (indicatif UI) – Apex dérive réellement la zone via ShippingCountry
     get zoneOptions() {
         return [
-            { label: 'France (FR)', value: 'FR' },
-            { label: 'Belgique (BE)', value: 'BE' },
-            { label: 'Suisse (CH)', value: 'CH' },
-            { label: 'Luxembourg (LU)', value: 'LU' }
-        ];
+            { label: 'France', value: 'FR' },   // FR
+            { label: 'Belgique', value: 'BE' }, // BE
+            { label: 'Suisse', value: 'CH' },   // CH
+            { label: 'Luxembourg', value: 'LU' }
+        ]; // UX uniquement
     }
 
-    // Options pour le radio-group (transporteurs compatibles)
-    get radioOptions() {
-        if (!this.hasData) return [];
-        return this.optionsDTO.compatible.map(c => {
-            const label = `${c.carrierName} • ${c.serviceLevel} • ${c.price} • ${c.leadTimeDays} j`;
-            return { label, value: c.carrierId };
-        });
+    // <-- BLOC AJOUTÉ : Fonction pour dériver le code de zone à partir du nom du pays
+    deriveZoneCode(country) {
+        if (!country) return 'FR'; // Valeur par défaut si le pays est vide
+        const c = country.trim().toUpperCase();
+        if (c === 'FR' || c === 'FRANCE') return 'FR';
+        if (c === 'BE' || c === 'BELGIQUE' || c === 'BELGIUM') return 'BE';
+        if (c === 'CH' || c === 'SUISSE' || c === 'SWITZERLAND') return 'CH';
+        if (c === 'LU' || c === 'LUXEMBOURG') return 'LU';
+        return 'FR'; // Valeur par défaut si pays non trouvé
     }
 
-    // Handlers UI
-    handleZoneChange(event) { this.zoneCode = event.detail.value; }
-    handleCarrierChange(event) { this.selectedCarrier = event.detail.value; }
-    handleTrackingChange(event) { this.trackingNumber = event.detail.value; }
+    // Gestion du changement de zone (affichage seulement)
+    handleZoneChange(e) { this.zoneCode = e.detail.value; } // UI helper
 
+    // Choix d'un transporteur dans la liste
+    handleCarrierChange(e) { this.selectedCarrier = e.detail.value; } // stocke l'Id
+
+    // Saisie d'un tracking (optionnel)
+    handleTrackingChange(e) { this.trackingNumber = e.detail.value; } // garde la valeur
+
+    // Charge les options via Apex (impératif) et les mappe pour le radio-group
     async loadOptions() {
-        this.loading = true;
+        this.loading = true; // spinner ON
         try {
-            const res = await computeTransportOptions({ orderId: this.recordId, zoneCodeOpt: this.zoneCode });
-            this.optionsDTO = res;
-            // Pré-sélection : moins chère si dispo
-            if (res && res.cheapest && res.cheapest.carrierId) {
-                this.selectedCarrier = res.cheapest.carrierId;
-            } else {
-                this.selectedCarrier = null;
+            this.dto = await computeOptions({ orderId: this.recordId, refreshKey: new Date().getTime() }); // appel Apex
+            
+            // <-- BLOC AJOUTÉ : Définit la valeur par défaut du menu déroulant
+            if (this.dto && this.dto.shippingCountry) {
+                this.zoneCode = this.deriveZoneCode(this.dto.shippingCountry);
             }
-            this.toast('Options mises à jour', 'Les options de transport ont été calculées.', 'success');
-        } catch (e) {
-            this.toast('Erreur', this.normaliseError(e), 'error');
+
+            const list = this.dto?.compatible || []; // sécurise la lecture
+            // Mappe vers {label,value} attendu par lightning-radio-group
+            this.options = list.map(o => ({
+                label: `${o.carrierName} (${o.serviceLevel}) - ${o.price}`, // libellé lisible
+                value: o.carrierId // valeur = Id transporteur
+            })); // conversion simple
+            this.selectedCarrier = null; // reset une éventuelle ancienne sélection
+            if(this.options.length === 0){
+                this.showToast('Information', 'Aucune option trouvée pour cette commande.', 'info'); // feedback
+            }
+        } catch (error) {
+            this.showToast('Erreur', error?.body?.message || error.message, 'error'); // surface l'erreur
         } finally {
-            this.loading = false;
+            this.loading = false; // spinner OFF
         }
     }
 
+    // Lance la livraison (création Shipment__c) via Apex
     async handleLaunch() {
-        this.loading = true;
+        this.loading = true; // spinner ON
         try {
-            const shipmentId = await launchDelivery({
-                orderId: this.recordId,
-                carrierId: this.selectedCarrier,
-                zoneCodeOpt: this.zoneCode,
-                trackingNumberOpt: this.trackingNumber
-            });
-            this.toast('Livraison lancée', `Shipment créé : ${shipmentId}`, 'success');
-            // Reset léger
-            this.trackingNumber = '';
-        } catch (e) {
-            this.toast('Erreur', this.normaliseError(e), 'error');
+            await launchDelivery({
+                orderId: this.recordId, // Id de l'ordre
+                carrierId: this.selectedCarrier, // choix utilisateur
+                trackingNumber: this.trackingNumber || null // optionnel
+            }); // exécute le DML côté serveur
+            this.showToast('Succès', 'Livraison lancée avec succès', 'success'); // feedback positif
+        } catch (error) {
+            this.showToast('Erreur', error?.body?.message || error.message, 'error'); // surface l'erreur
         } finally {
-            this.loading = false;
+            this.loading = false; // spinner OFF
         }
     }
 
-    // Utilitaires
-    toast(title, message, variant) {
-        this.dispatchEvent(new ShowToastEvent({ title, message, variant }));
-    }
-    normaliseError(e) {
-        if (!e) return 'Erreur inconnue';
-        if (Array.isArray(e.body)) return (e.body[0] && e.body[0].message) || e.message;
-        return (e.body && e.body.message) || e.message || e;
+    // Confort: wrapper pour ShowToastEvent
+    showToast(title, message, variant) {
+        this.dispatchEvent(new ShowToastEvent({ title, message, variant })); // déclenche le toast
     }
 }

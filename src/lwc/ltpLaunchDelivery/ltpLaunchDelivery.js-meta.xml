@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- Meta: expose le composant sur Record Page (Order) comme demandé dans le CDC -->
 <LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
     <apiVersion>64.0</apiVersion>
     <isExposed>true</isExposed>
-    <masterLabel>LTP - Lancer la livraison</masterLabel>
-    <description>Interface LWC pour calculer les options de transport et créer une livraison (Shipment__c) depuis une commande.</description>
     <targets>
         <target>lightning__RecordPage</target>
     </targets>

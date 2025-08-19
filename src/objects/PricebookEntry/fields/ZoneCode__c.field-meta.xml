@@ -1,7 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>ZoneCode__c</fullName>
-    <label>Zone Code</label>
-    <type>Text</type><length>50</length>
-    <externalId>true</externalId>
+    <description>Code de zone (FR, BE, CH, LU)</description>
+    <externalId>false</externalId>
+    <inlineHelpText>FR, BE, CH, LU</inlineHelpText>
+    <label>Code zone</label>
+    <length>10</length>
+    <required>true</required> <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
 </CustomField>
