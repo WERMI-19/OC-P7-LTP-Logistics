@@ -1,10 +1,5 @@
 @IsTest
 // Tests unitaires de TransporterSelector – couvrent compatibilité zone et B2B/B2C
-// Objectif: garantir que seules les offres valides remontent pour une commande donnée
-// Données: on utilise la factory pour rester DRY et respectueux du MDD
-// Cas: Consumer exclut carriers B2C=false ; Business exclut carriers B2B=false
-// Zone: FR par défaut pour simplifier (ShippingCountry='FR')
-// Perf: tests rapides sans DML inutile
 public class TransporterSelectorTest {
 
     @IsTest

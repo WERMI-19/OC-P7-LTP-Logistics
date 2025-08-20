@@ -1,11 +1,6 @@
 @IsTest
 // Classe utilitaire de données de test – centralise la création des enregistrements
 // Avantage: factorise la logique et garantit la cohérence avec le MDD
-// Champs clés utilisés: Account.CustomerType__c, Product2.Carrier__c, Product2.ServiceLevel__c
-// PricebookEntry.ZoneCode__c, PricebookEntry.LeadTimeDays__c (doivent exister dans l'org)
-// Pratique: expose des surcharges pour créer rapidement différents cas de figure
-// NB: Les IDs retournés sont insérés (DML inclus) pour simplifier les tests
-// Conseil: garde des valeurs FR par défaut pour faciliter les tests de zone
 public class TestDataFactory {
 
     // Création d'un compte (Consumer/Business)

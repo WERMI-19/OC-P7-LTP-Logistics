@@ -1,119 +1,126 @@
 import { LightningElement, api, track } from 'lwc'; // API LWC de base
 import { ShowToastEvent } from 'lightning/platformShowToastEvent'; // toasts standard
 import hasLaunchPermission from '@salesforce/customPermission/Can_Launch_Delivery'; // Custom Permission
-import computeOptions from '@salesforce/apex/OrderService.computeOptions';   // ✅ calcule DTO options
-import launchDelivery from '@salesforce/apex/OrderService.launchDelivery';   // ✅ crée Shipment__c
+import computeOptions from '@salesforce/apex/OrderService.computeOptions';   // calcule DTO options
+import launchDelivery from '@salesforce/apex/OrderService.launchDelivery';   // Crée Shipment__c
 
 export default class LtpLaunchDelivery extends LightningElement {
-    @api recordId;                 // Id de la commande courante (Record Page)
-    @track loading = false;        // État du spinner (UX)
-    @track dto;                    // DTO retourné par Apex (compatible/fastest/cheapest)
-    @track options = [];           // Options formatées {label,value} pour radio-group
-    @track selectedCarrier = null; // Transporteur sélectionné (Id)
-    @track zoneCode;               // <-- La valeur par défaut  dynamique
+    // -- 1. Déclaration des propriétés du composant --
+    @api recordId;                 // Reçoit l'ID de la page de commande
+    @track loading = false;        // Gère l'affichage du spinner
+    @track dto;                    // Stocke le résultat complet de l'appel Apex
+    @track options = [];           // Liste des transporteurs pour le radio group
+    @track selectedCarrier = null; // ID du transporteur choisi par l'utilisateur
+    @track trackingNumber = '';    // Numéro de suivi optionnel
+    @track zoneCode;               // Code de zone pour le menu déroulant (ex: 'FR')
 
-    // Autorisation: booléen injecté par la Custom Permission (plateforme)
-    get hasPermission() { return hasLaunchPermission === true; } // garde l'UI si true
+    // -- 2. Getters : Propriétés calculées pour l'affichage --
+    get hasPermission() { return hasLaunchPermission === true; }
+    get hasData() { return Array.isArray(this.options) && this.options.length > 0; }
 
-    // Indique s'il y a des options à afficher (radio-group visible)
-    get hasData() { return Array.isArray(this.options) && this.options.length > 0; } // simple check
-
-    // Libellé résumé de l'option la plus rapide (DTO.fastest)
+    // Formate l'affichage pour l'option la plus rapide
     get fastestLabel() {
-        if (!this.dto?.fastest) return '—'; // rien si pas de données
-        const f = this.dto.fastest; // référence rapide
-        return `${f.carrierName} • ${f.serviceLevel} • ${f.price}`; // format compact
+        if (!this.dto?.fastest) return '—';
+        const f = this.dto.fastest;
+        return `${f.carrierName} • ${f.serviceLevel} • ${f.price}`;
     }
 
-    // Libellé résumé de l'option la moins chère (DTO.cheapest)
+    // Formate l'affichage pour l'option la moins chère
     get cheapestLabel() {
-        if (!this.dto?.cheapest) return '—'; // rien si pas de données
-        const c = this.dto.cheapest; // référence rapide
-        return `${c.carrierName} • ${c.serviceLevel} • ${c.price}`; // format compact
+        if (!this.dto?.cheapest) return '—';
+        const c = this.dto.cheapest;
+        return `${c.carrierName} • ${c.serviceLevel} • ${c.price}`;
     }
 
-    // État du bouton "Lancer la livraison" : désactivé si pas de sélection ou chargement
+    // Gère l'état (activé/désactivé) du bouton "Lancer la livraison"
     get disableLaunch() {
-        return !this.selectedCarrier || this.loading; // évite clicks multiples
+        return !this.selectedCarrier || this.loading;
     }
 
-    // Liste de zones affichée (indicatif UI) – Apex dérive réellement la zone via ShippingCountry
+    // Définit les options statiques pour le menu déroulant des zones
     get zoneOptions() {
         return [
-            { label: 'France', value: 'FR' },   // FR
-            { label: 'Belgique', value: 'BE' }, // BE
-            { label: 'Suisse', value: 'CH' },   // CH
+            { label: 'France', value: 'FR' },
+            { label: 'Belgique', value: 'BE' },
+            { label: 'Suisse', value: 'CH' },
             { label: 'Luxembourg', value: 'LU' }
-        ]; // UX uniquement
+        ];
     }
+    
+    // -- 3. Fonctions de gestion des événements de l'interface --
 
-    // <-- BLOC AJOUTÉ : Fonction pour dériver le code de zone à partir du nom du pays
+    // "Traduit" le nom complet du pays en code de zone (FR, BE...)
     deriveZoneCode(country) {
-        if (!country) return 'FR'; // Valeur par défaut si le pays est vide
+        if (!country) return 'FR';
         const c = country.trim().toUpperCase();
         if (c === 'FR' || c === 'FRANCE') return 'FR';
         if (c === 'BE' || c === 'BELGIQUE' || c === 'BELGIUM') return 'BE';
         if (c === 'CH' || c === 'SUISSE' || c === 'SWITZERLAND') return 'CH';
         if (c === 'LU' || c === 'LUXEMBOURG') return 'LU';
-        return 'FR'; // Valeur par défaut si pays non trouvé
+        return 'FR';
     }
 
-    // Gestion du changement de zone (affichage seulement)
-    handleZoneChange(e) { this.zoneCode = e.detail.value; } // UI helper
+    // Met à jour la variable quand l'utilisateur change la zone
+    handleZoneChange(e) { this.zoneCode = e.detail.value; }
 
-    // Choix d'un transporteur dans la liste
-    handleCarrierChange(e) { this.selectedCarrier = e.detail.value; } // stocke l'Id
+    // Stocke l'ID du transporteur sélectionné
+    handleCarrierChange(e) { this.selectedCarrier = e.detail.value; }
 
-    // Saisie d'un tracking (optionnel)
-    handleTrackingChange(e) { this.trackingNumber = e.detail.value; } // garde la valeur
+    // Met à jour la variable du numéro de suivi
+    handleTrackingChange(e) { this.trackingNumber = e.detail.value; }
 
-    // Charge les options via Apex (impératif) et les mappe pour le radio-group
+    // -- 4. Logique principale : Appels au serveur (Apex) --
+
+    // Appelle Apex pour charger les options de livraison
     async loadOptions() {
-        this.loading = true; // spinner ON
+        this.loading = true;
         try {
-            this.dto = await computeOptions({ orderId: this.recordId, refreshKey: new Date().getTime() }); // appel Apex
+            // Appel à la méthode Apex computeOptions
+            this.dto = await computeOptions({ orderId: this.recordId, refreshKey: new Date().getTime() });
             
-            // <-- BLOC AJOUTÉ : Définit la valeur par défaut du menu déroulant
+            // Préremplit le menu déroulant avec le pays de la commande
             if (this.dto && this.dto.shippingCountry) {
                 this.zoneCode = this.deriveZoneCode(this.dto.shippingCountry);
             }
 
-            const list = this.dto?.compatible || []; // sécurise la lecture
-            // Mappe vers {label,value} attendu par lightning-radio-group
+            // Transforme les données reçues pour la liste de radio-boutons
+            const list = this.dto?.compatible || [];
             this.options = list.map(o => ({
-                label: `${o.carrierName} (${o.serviceLevel}) - ${o.price}`, // libellé lisible
-                value: o.carrierId // valeur = Id transporteur
-            })); // conversion simple
-            this.selectedCarrier = null; // reset une éventuelle ancienne sélection
+                label: `${o.carrierName} (${o.serviceLevel}) - ${o.price}`,
+                value: o.carrierId
+            }));
+            this.selectedCarrier = null;
+
             if(this.options.length === 0){
-                this.showToast('Information', 'Aucune option trouvée pour cette commande.', 'info'); // feedback
+                this.showToast('Information', 'Aucune option trouvée pour cette commande.', 'info');
             }
         } catch (error) {
-            this.showToast('Erreur', error?.body?.message || error.message, 'error'); // surface l'erreur
+            this.showToast('Erreur', error?.body?.message || error.message, 'error');
         } finally {
-            this.loading = false; // spinner OFF
+            this.loading = false;
         }
     }
 
-    // Lance la livraison (création Shipment__c) via Apex
+    // Appelle Apex pour créer l'enregistrement de Livraison (Shipment__c)
     async handleLaunch() {
-        this.loading = true; // spinner ON
+        this.loading = true;
         try {
+            // Appel à la méthode Apex launchDelivery
             await launchDelivery({
-                orderId: this.recordId, // Id de l'ordre
-                carrierId: this.selectedCarrier, // choix utilisateur
-                trackingNumber: this.trackingNumber || null // optionnel
-            }); // exécute le DML côté serveur
-            this.showToast('Succès', 'Livraison lancée avec succès', 'success'); // feedback positif
+                orderId: this.recordId,
+                carrierId: this.selectedCarrier,
+                trackingNumber: this.trackingNumber || null
+            });
+            this.showToast('Succès', 'Livraison lancée avec succès', 'success');
         } catch (error) {
-            this.showToast('Erreur', error?.body?.message || error.message, 'error'); // surface l'erreur
+            this.showToast('Erreur', error?.body?.message || error.message, 'error');
         } finally {
-            this.loading = false; // spinner OFF
+            this.loading = false;
         }
     }
 
-    // Confort: wrapper pour ShowToastEvent
+    // Fonction utilitaire pour afficher les notifications toast
     showToast(title, message, variant) {
-        this.dispatchEvent(new ShowToastEvent({ title, message, variant })); // déclenche le toast
+        this.dispatchEvent(new ShowToastEvent({ title, message, variant }));
     }
 }

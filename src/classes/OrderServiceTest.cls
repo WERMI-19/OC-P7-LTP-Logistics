@@ -1,10 +1,7 @@
 @IsTest
 // Classe de test : OrderServiceTest — couvre computeOptions + launchDelivery
-// Objectif : valider DTO (fastest/cheapest) + création Shipment__c complète
-// Pré-requis MDD : Product2.Carrier__c, Product2.ServiceLevel__c, PBE.ZoneCode__c, PBE.LeadTimeDays__c
-// Astuce : on utilise le Pricebook standard pour simplifier (mêmes PBE que l'Order)
 // Sécurité : bypass Custom Permission via OrderService.TEST_BYPASS_PERMISSION = true
-// Qualité : Test.startTest/stopTest pour isoler les limites et le cache
+
 public class OrderServiceTest {
 
     // --- Helpers locaux pour réduire le bruit des tests ---

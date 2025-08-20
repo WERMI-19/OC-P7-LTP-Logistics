@@ -1,11 +1,4 @@
 // Classe: OrderService – services métier pour le LWC "Lancer une livraison"
-// Rôle: calculer les options (DTO) et créer un Shipment__c complet (coût, délai, ETA, tracking)
-// Sécurité: protégé par Custom Permission "Can_Launch_Delivery" (vérifiée côté serveur)
-// MDD: s'appuie sur Product2.Carrier__c / ServiceLevel__c et PricebookEntry.ZoneCode__c / LeadTimeDays__c
-// Anti-cache: computeOptions prend "refreshKey" pour casser le cache storable sans changer la logique
-// Testabilité: TEST_BYPASS_PERMISSION permet d'exécuter les tests sans Custom Permission
-// Robustesse: messages clairs via AuraHandledException pour le LWC
-// Partage: "with sharing" pour respecter FLS / rules en runtime
 public with sharing class OrderService {
 
     // Flag de test: autorise à ignorer la Custom Permission pendant les tests unitaires

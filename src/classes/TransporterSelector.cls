@@ -1,11 +1,6 @@
 // Classe: TransporterSelector - calcule les options de transport compatibles pour une commande
 // Règle: on respecte le MDD (Product2.Carrier__c, Product2.ServiceLevel__c, PBE.ZoneCode__c, PBE.LeadTimeDays__c)
-// Note: garde la logique pure "sélection", sans effet de bord (pas d'insert/update ici)
-// Conseil: cette classe est réutilisable côté service (OrderService) et côté tests
-// Perf: on fait des requêtes groupées (PricebookEntry -> Carrier__c), pas de requêtes dans des boucles
-// Filtrage: zone (dérivée du pays de livraison) + compatibilité B2B/B2C côté Carrier__c
-// Robustesse: si un prérequis manque (Pricebook2Id/Zone/Account), on renvoie une liste vide
-// Sécurité: with sharing pour respecter le FLS/O sharing en runtime
+
 public with sharing class TransporterSelector {
 
     // DTO simple exposé au LWC — valeurs calculées sur PBE/Produit/Transporteur

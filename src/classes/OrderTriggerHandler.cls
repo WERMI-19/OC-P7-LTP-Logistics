@@ -1,11 +1,6 @@
 // Classe: OrderTriggerHandler - applique les règles métier sur Order
 // Règle principale: min d'items pour activer une commande (3 pour Consumer, 5 pour Business)
-// Architecture: Handler dédié pour un trigger léger/testable (Single Responsibility)
-// Robustesse: regroupe les requêtes, pas de SOQL dans les boucles (bulkification)
-// Explicabilité: message d'erreur contextualisé (type de client + quantité requise)
-// Extensibilité: point d'entrée pour ajouter de futures règles Order (validation/normalisation)
-// Sécurité: with sharing pour respecter le modèle de partage
-// Testabilité: méthode statique pure — facile à couvrir depuis un test
+
 public with sharing class OrderTriggerHandler {
 
     // Valide la contrainte "minimum d'items" à l'activation

@@ -1,30 +1,27 @@
-<!-- LWC Template: ltpLaunchDelivery – écran de lancement de livraison -->
-<!-- Règles: protégé par Custom Permission ; ne montre l'UI que si autorisé -->
-<!-- Contenu: sélection zone (indicatif), chargement des options, choix transporteur, résumé fastest/cheapest -->
-<!-- Accessibilité: labels explicites, éléments Lightning natifs -->
-<!-- Expérience: spinner sur opérations ; messages d'information en cas d'absence d'options -->
-<!-- Extension: on peut facilement ajouter un tableau détaillé des options si besoin -->
 <template>
-    <!-- Garde UI: si l'utilisateur n'a pas la permission, on affiche un message -->
+    <!-- Affichage SI l'utilisateur N'A PAS la permission custom 'Can_Launch_Delivery' -->
     <template if:false={hasPermission}>
         <lightning-card title="Lancer la livraison">
             <div class="slds-p-around_medium">
-                <lightning-formatted-text value="Accès refusé : permission requise (Can_Launch_Delivery)." ></lightning-formatted-text>
+                <!-- Message d'accès refusé : vérifier la Permission Set et la Custom Permission -->
+                <lightning-formatted-text value="Accès refusé : permission requise (Can_Launch_Delivery)."></lightning-formatted-text>
             </div>
         </lightning-card>
     </template>
 
-    <!-- UI principale si permission OK -->
+    <!-- Affichage SI l'utilisateur A la permission -->
     <template if:true={hasPermission}>
         <lightning-card title="Lancer la livraison" icon-name="utility:truck">
-            <!-- Spinner global -->
+            <!-- Indicateur de chargement pendant les appels Apex -->
             <template if:true={loading}>
                 <lightning-spinner alternative-text="Chargement..." size="small"></lightning-spinner>
             </template>
 
+            <!-- (1) Paramètres de recherche : zone, action de chargement, tracking optionnel -->
+            <p class="slds-p-horizontal_medium slds-p-top_medium slds-text-heading_small"><b>1. Paramètres de recherche</b></p>
             <div class="slds-p-around_medium slds-grid slds-wrap slds-gutters">
-                <!-- Choix visuel de la zone (indicatif) -->
                 <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-3">
+                    <!-- Filtre indicatif par zone (ne bloque pas la compatibilité réelle côté serveur) -->
                     <lightning-combobox
                         name="zone"
                         label="Zone de livraison (indicative)"
@@ -34,29 +31,39 @@
                     </lightning-combobox>
                 </div>
 
-                <!-- Bouton pour charger les options -->
                 <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-3 slds-align_absolute-center">
+                    <!-- Bouton pour déclencher le calcul/chargement des options de transport via Apex -->
                     <lightning-button
                         label="Charger les options"
-                        title="Charger les options"
                         variant="brand"
                         onclick={loadOptions}
                         disabled={loading}>
                     </lightning-button>
                 </div>
-
-
+                
+                <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-3">
+                    <!-- Numéro de suivi facultatif (peut préremplir/écraser avant le lancement) -->
+                    <lightning-input
+                        type="text"
+                        label="Numéro de suivi (optionnel)"
+                        value={trackingNumber}
+                        onchange={handleTrackingChange}>
+                    </lightning-input>
+                </div>
             </div>
 
-            <!-- Résumé Fastest / Cheapest -->
-            <div class="slds-p-horizontal_medium">
+            <!-- (2) Résumé des meilleures options calculées (plus rapide / moins chère) -->
+            <p class="slds-p-horizontal_medium slds-text-heading_small"><b>2. Résumé des meilleures options</b></p>
+            <div class="slds-p-horizontal_medium slds-p-bottom_medium">
                 <div class="slds-grid slds-wrap slds-gutters">
                     <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2">
+                        <!-- Affichage de l’option la plus rapide -->
                         <lightning-tile label="Plus rapide" type="media">
                             <p>{fastestLabel}</p>
                         </lightning-tile>
                     </div>
                     <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2">
+                        <!-- Affichage de l’option la moins chère -->
                         <lightning-tile label="Moins chère" type="media">
                             <p>{cheapestLabel}</p>
                         </lightning-tile>
@@ -64,9 +71,11 @@
                 </div>
             </div>
 
-            <!-- Choix du transporteur (radio) si options disponibles -->
+            <!-- (3) Sélection du transporteur : visible uniquement si des données compatibles existent -->
             <template if:true={hasData}>
+                <p class="slds-p-horizontal_medium slds-text-heading_small"><b>3. Sélection du transporteur</b></p>
                 <div class="slds-p-around_medium">
+                    <!-- Liste radio des transporteurs compatibles retournés par Apex -->
                     <lightning-radio-group
                         name="carriers"
                         label="Choisissez un transporteur"
@@ -78,11 +87,12 @@
                 </div>
             </template>
 
-            <!-- Actions -->
+            <!-- (4) Action finale : lancement de la livraison -->
+            <p class="slds-p-horizontal_medium slds-text-heading_small"><b>4. Action finale</b></p>
             <div class="slds-p-around_medium slds-align_absolute-center">
+                <!-- Bouton final : désactivé tant que les conditions (ex. sélection) ne sont pas remplies -->
                 <lightning-button
                     label="Lancer la livraison"
-                    title="Lancer la livraison"
                     variant="destructive"
                     onclick={handleLaunch}
                     disabled={disableLaunch}>
