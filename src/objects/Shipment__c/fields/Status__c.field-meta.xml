@@ -1,28 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>Status__c</fullName>
-    <label>Statut</label>
     <description>Statut du cycle de vie de la livraison.</description>
+    <label>Statut</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
     <type>Picklist</type>
     <valueSet>
         <restricted>true</restricted>
         <valueSetDefinition>
             <sorted>false</sorted>
             <value>
-                <fullName>Created</fullName> <default>true</default>
-                <label>Créée</label> </value>
+                <fullName>Created</fullName>
+                <default>true</default>
+                <label>Créée</label>
+            </value>
             <value>
                 <fullName>In Transit</fullName>
                 <default>false</default>
-                <label>En transit</label> </value>
+                <label>En transit</label>
+            </value>
             <value>
                 <fullName>Delivered</fullName>
                 <default>false</default>
-                <label>Livrée</label> </value>
+                <label>Livrée</label>
+            </value>
             <value>
                 <fullName>Cancelled</fullName>
                 <default>false</default>
-                <label>Annulée</label> </value>
+                <label>Annulée</label>
+            </value>
+            <value>
+                <fullName>Planned</fullName>
+                <default>false</default>
+                <isActive>false</isActive>
+                <label>Planned</label>
+            </value>
         </valueSetDefinition>
     </valueSet>
 </CustomField>

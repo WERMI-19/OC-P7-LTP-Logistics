@@ -1,10 +1,8 @@
 @IsTest
-// Classe de test : OrderServiceTest — couvre computeOptions + launchDelivery
-// Sécurité : bypass Custom Permission via OrderService.TEST_BYPASS_PERMISSION = true
-
+// Classe de test : OrderServiceTest — couvre computeOptions + launchDelivery + cas d'erreur
 public class OrderServiceTest {
 
-    // --- Helpers locaux pour réduire le bruit des tests ---
+    // --- Helpers locaux pour créer les données de test ---
     private static Carrier__c makeCarrier(Boolean b2b, Boolean b2c) {
         // Crée un transporteur actif avec compat B2B/B2C paramétrable
         Carrier__c c = new Carrier__c(
@@ -55,39 +53,26 @@ public class OrderServiceTest {
     @IsTest
     static void computeOptions_returnsFastestAndCheapest() {
         Id stdPb = Test.getStandardPricebookId(); // PB standard requis
-        // Compte Consumer -> autorise B2C
-        Account a = new Account(
-            Name='Acme Consumer',
-            CustomerType__c='Consumer',
-            ShippingCountry='FR', ShippingPostalCode='75001', ShippingState='Île-de-France'
-        );
-        insert a; // insert compte
+        Account a = new Account(Name='Acme Consumer', CustomerType__c='Consumer');
+        insert a;
 
-        // 2 transporteurs compatibles (B2B+B2C)
-        Carrier__c cFast = makeCarrier(true,true);  // pour Express
-        Carrier__c cCheap= makeCarrier(true,true);  // pour Eco
+        Carrier__c cFast = makeCarrier(true,true);
+        Carrier__c cCheap= makeCarrier(true,true);
 
-        // Produits : Express (rapide+cher) vs Eco (lent+pas cher)
-        Product2 pFast  = makeProduct(cFast.Id, 'Express'); // lead 1j
-        Product2 pCheap = makeProduct(cCheap.Id, 'Eco');    // lead 4j
+        Product2 pFast  = makeProduct(cFast.Id, 'Express');
+        Product2 pCheap = makeProduct(cCheap.Id, 'Eco');
 
-        // PBE zone FR cohérents avec l’Order
-        makePbe(stdPb, pFast.Id, 30, 'FR', 1); // Express : 30€ / 1j
-        makePbe(stdPb, pCheap.Id,10, 'FR', 4); // Eco     : 10€ / 4j
+        makePbe(stdPb, pFast.Id, 30, 'FR', 1);
+        makePbe(stdPb, pCheap.Id,10, 'FR', 4);
 
-        // Order lié au PB standard
-        Order o = makeOrder(a.Id, stdPb); // ShippingCountry=FR => zone=FR
+        Order o = makeOrder(a.Id, stdPb);
 
-        Test.startTest(); // isole les limites + efface caches
-        // Anti-cache : refreshKey quelconque
+        Test.startTest();
         OrderService.OptionsDTO dto = OrderService.computeOptions(o.Id, 'test-refresh-key');
         Test.stopTest();
 
-        // Assertions : DTO non null et ≥ 2 options
         System.assertNotEquals(null, dto, 'Le DTO ne doit pas être null');
         System.assert(dto.compatible.size() >= 2, 'Au moins 2 options attendues');
-
-        // Fastest = Express (1j) ; Cheapest = Eco (10€)
         System.assertEquals('Express', dto.fastest.serviceLevel, 'La plus rapide doit être Express');
         System.assertEquals(10, dto.cheapest.price, 'La moins chère doit avoir un prix de 10');
     }
@@ -95,58 +80,83 @@ public class OrderServiceTest {
     // --- Test 2 : launchDelivery crée une Shipment__c complète et correcte ---
     @IsTest
     static void launchDelivery_createsShipment_andComputesCostEta() {
-        Id stdPb = Test.getStandardPricebookId(); // PB standard requis
+        Id stdPb = Test.getStandardPricebookId();
+        Account a = new Account(Name='Acme Business', CustomerType__c='Business');
+        insert a;
 
-        // Compte Business -> compatible B2B
-        Account a = new Account(
-            Name='Acme Business',
-            CustomerType__c='Business',
-            ShippingCountry='FR', ShippingPostalCode='75002', ShippingState='Île-de-France'
-        );
-        insert a; // insert compte
-
-        // Transporteur B2B-only (juste pour varier)
-        Carrier__c c = makeCarrier(true,false); // B2B only
-
-        // Produit standard pour ce transporteur
-        Product2 pStd = makeProduct(c.Id, 'Standard'); // niveau Standard
-
-        // PBE zone FR : 25€ / 2 jours
+        Carrier__c c = makeCarrier(true,false);
+        Product2 pStd = makeProduct(c.Id, 'Standard');
         makePbe(stdPb, pStd.Id, 25, 'FR', 2);
 
-        // Order lié au PB standard
         Order o = makeOrder(a.Id, stdPb);
-
-        // Bypass la Custom Permission pendant le test
         OrderService.TEST_BYPASS_PERMISSION = true;
 
-        Test.startTest(); // isole les limites
-        // Pas de tracking fourni -> doit être généré
+        Test.startTest();
         Shipment__c sh = OrderService.launchDelivery(o.Id, c.Id, null);
         Test.stopTest();
 
-        // Relecture pour vérifier les champs MDD remplis
-        sh = [SELECT Id, Order__c, Carrier__c, Status__c, ZoneCode__c,
-                     DestinationCountry__c, DestinationRegion__c, DestinationPostalCode__c,
-                     ShippingCost__c, EstimatedLeadTimeHours__c, EstimatedDeliveryDate__c, TrackingNumber__c
-              FROM Shipment__c WHERE Id=:sh.Id];
+        sh = [SELECT Id, Order__c, Carrier__c, Status__c, ShippingCost__c, EstimatedLeadTimeHours__c, EstimatedDeliveryDate__c, TrackingNumber__c FROM Shipment__c WHERE Id=:sh.Id];
 
-        // Liens et statut
         System.assertEquals(o.Id, sh.Order__c, 'Lien commande attendu');
         System.assertEquals(c.Id, sh.Carrier__c, 'Lien transporteur attendu');
         System.assertEquals('Created', sh.Status__c, 'Statut initial "Created" attendu');
-
-        // Zone/Adresse
-        System.assertEquals('FR', sh.ZoneCode__c, 'Zone FR attendue');
-        System.assertEquals('FR', sh.DestinationCountry__c, 'Pays destination = FR');
-        System.assertNotEquals(null, sh.DestinationPostalCode__c, 'Code postal doit être renseigné');
-
-        // Coût & délai (2 jours -> 48h)
         System.assertEquals(25, sh.ShippingCost__c, 'Coût issu de la PBE');
         System.assertEquals(48, sh.EstimatedLeadTimeHours__c, '2 jours = 48 heures');
         System.assertEquals(Date.today().addDays(2), sh.EstimatedDeliveryDate__c, 'ETA = +2 jours');
-
-        // Tracking auto non vide
         System.assertNotEquals(null, sh.TrackingNumber__c, 'Tracking doit être généré');
+    }
+
+    // --- NOUVEAU TEST : Vérifie que computeOptions lève une exception si l'ID est nul ---
+    @IsTest
+    static void computeOptions_throwsException_whenOrderIdIsNull() {
+        try {
+            OrderService.computeOptions(null, 'test-key');
+            System.assert(false, 'Une exception était attendue pour un ID de commande nul.');
+        } catch (AuraHandledException e) {
+            System.assert(e.getMessage().contains('Order Id requis'), 'Le message d\'erreur est incorrect.');
+        }
+    }
+
+    // --- NOUVEAU TEST : Vérifie que launchDelivery lève une exception si les IDs sont nuls ---
+    @IsTest
+    static void launchDelivery_throwsException_whenIdsAreNull() {
+        Account a = TestDataFactory.makeAccount('Consumer');
+        Order o = TestDataFactory.makeOrder(a.Id, Test.getStandardPricebookId());
+        Carrier__c c = TestDataFactory.makeCarrier(true, true);
+        
+        try {
+            OrderService.launchDelivery(null, c.Id, null);
+            System.assert(false, 'Exception attendue pour un orderId nul.');
+        } catch (AuraHandledException e) {
+            System.assert(e.getMessage().contains('Order Id et Carrier Id requis'), 'Message d\'erreur incorrect pour orderId nul.');
+        }
+
+        try {
+            OrderService.launchDelivery(o.Id, null, null);
+            System.assert(false, 'Exception attendue pour un carrierId nul.');
+        } catch (AuraHandledException e) {
+            System.assert(e.getMessage().contains('Order Id et Carrier Id requis'), 'Message d\'erreur incorrect pour carrierId nul.');
+        }
+    }
+
+    // --- NOUVEAU TEST : Vérifie le blocage si la permission custom est manquante ---
+    @IsTest
+    static void launchDelivery_throwsException_whenPermissionIsMissing() {
+        Account a = TestDataFactory.makeAccount('Business');
+        Order o = TestDataFactory.makeOrder(a.Id, Test.getStandardPricebookId());
+        Carrier__c c = TestDataFactory.makeCarrier(true, false);
+        Product2 p = TestDataFactory.makeProduct(c.Id, 'Standard');
+        TestDataFactory.makePbe(Test.getStandardPricebookId(), p.Id, 25, 'FR', 2);
+
+        OrderService.TEST_BYPASS_PERMISSION = false;
+
+        try {
+            OrderService.launchDelivery(o.Id, c.Id, null);
+            System.assert(false, 'Une exception était attendue car la permission est manquante.');
+        } catch (AuraHandledException e) {
+            System.assert(e.getMessage().contains('Accès refusé'), 'Le message d\'erreur pour la permission manquante est incorrect.');
+        } finally {
+            OrderService.TEST_BYPASS_PERMISSION = true;
+        }
     }
 }

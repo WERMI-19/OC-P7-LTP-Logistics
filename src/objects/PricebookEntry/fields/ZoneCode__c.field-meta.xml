@@ -6,7 +6,8 @@
     <inlineHelpText>FR, BE, CH, LU</inlineHelpText>
     <label>Code zone</label>
     <length>10</length>
-    <required>true</required> <trackTrending>false</trackTrending>
+    <required>true</required>
+    <trackHistory>false</trackHistory>
     <type>Text</type>
     <unique>false</unique>
 </CustomField>

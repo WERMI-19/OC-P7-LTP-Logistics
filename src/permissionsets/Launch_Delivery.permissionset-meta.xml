@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
-    <label>Launch Delivery</label>
-    <hasActivationRequired>false</hasActivationRequired>
     <customPermissions>
         <enabled>true</enabled>
         <name>Can_Launch_Delivery</name>
@@ -11,4 +9,6 @@
         <field>Product2.ServiceLevel__c</field>
         <readable>true</readable>
     </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>Launch Delivery</label>
 </PermissionSet>

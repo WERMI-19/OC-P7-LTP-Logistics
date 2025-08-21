@@ -1,13 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>ServiceLevel__c</fullName>
-    <caseSensitive>false</caseSensitive>
     <description>Niveau de service proposé par le transporteur</description>
-    <externalId>false</externalId>
     <inlineHelpText>Ex: Standard, Express, Eco</inlineHelpText>
     <label>Niveau de service</label>
     <required>false</required>
-    <trackTrending>false</trackTrending>
+    <trackHistory>false</trackHistory>
     <type>Picklist</type>
     <valueSet>
         <restricted>true</restricted>
@@ -19,14 +17,20 @@
                 <label>Eco</label>
             </value>
             <value>
-                <fullName>Standard</fullName>
-                <default>true</default>
-                <label>Standard</label>
+                <fullName>Economy</fullName>
+                <default>false</default>
+                <isActive>false</isActive>
+                <label>Economy</label>
             </value>
             <value>
                 <fullName>Express</fullName>
                 <default>false</default>
                 <label>Express</label>
+            </value>
+            <value>
+                <fullName>Standard</fullName>
+                <default>true</default>
+                <label>Standard</label>
             </value>
         </valueSetDefinition>
     </valueSet>

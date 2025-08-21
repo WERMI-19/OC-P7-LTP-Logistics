@@ -2,5 +2,7 @@
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>ActualDeliveryDate__c</fullName>
     <label>Actual Delivery Date</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
     <type>Date</type>
 </CustomField>

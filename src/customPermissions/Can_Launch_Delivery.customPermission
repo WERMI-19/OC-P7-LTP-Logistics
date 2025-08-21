@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CustomPermission xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Autorise le lancement de livraison depuis l&apos;Order</description>
+    <isLicensed>false</isLicensed>
     <label>Can Launch Delivery</label>
-    <description>Autorise le lancement de livraison depuis l'Order</description>
 </CustomPermission>

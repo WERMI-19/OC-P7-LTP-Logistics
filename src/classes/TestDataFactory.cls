@@ -64,7 +64,7 @@ public class TestDataFactory {
     // Création d'une commande minimale
     public static Order makeOrder(Id accountId, Id pricebookId){
         Order o = new Order(AccountId=accountId, Status='Draft',
-                            EffectiveDate=Date.today(), Pricebook2Id=pricebookId);
+                            EffectiveDate=Date.today(), Pricebook2Id=pricebookId,ShippingCountry='FR');
         insert o; return o; // insert direct
     }
 

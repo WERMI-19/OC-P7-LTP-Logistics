@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>Carrier__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
     <label>Carrier</label>
-    <type>Lookup</type>
     <referenceTo>Carrier__c</referenceTo>
     <relationshipLabel>Carrier Shipments</relationshipLabel>
     <relationshipName>Carrier_Shipments</relationshipName>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
 </CustomField>

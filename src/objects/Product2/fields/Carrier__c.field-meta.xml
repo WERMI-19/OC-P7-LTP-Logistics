@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>Carrier__c</fullName>
-    <deleteConstraint>Restrict</deleteConstraint> <label>Transporteur</label>
+    <deleteConstraint>Restrict</deleteConstraint>
+    <label>Transporteur</label>
     <referenceTo>Carrier__c</referenceTo>
     <relationshipLabel>Produits du transporteur</relationshipLabel>
     <relationshipName>CarrierProducts</relationshipName>
     <required>true</required>
-    <trackTrending>false</trackTrending>
+    <trackHistory>false</trackHistory>
     <type>Lookup</type>
 </CustomField>
