@@ -1,24 +1,42 @@
 @IsTest
-// Classe utilitaire de données de test – centralise la création des enregistrements
-// Avantage: factorise la logique et garantit la cohérence avec le MDD
+/**
+ * @description Classe utilitaire pour créer des données de test cohérentes.
+ * Centralise la logique de création des enregistrements pour garantir que les tests
+ * sont basés sur des données valides conformes au modèle de données (MDD).
+ */
 public class TestDataFactory {
 
-    // Création d'un compte (Consumer/Business)
+    /**
+     * @description Crée un Compte (Account) avec un type de client spécifique.
+     * @param customerType 'Consumer' ou 'Business'.
+     * @return Le Compte inséré.
+     */
     public static Account makeAccount(String customerType){
         Account a = new Account(
-            Name = 'Acme ' + customerType,
+            Name = 'Acme ' + customerType + ' ' + String.valueOf(Crypto.getRandomInteger()),
             CustomerType__c    = String.isBlank(customerType) ? 'Consumer' : customerType,
-            ShippingCountry    = 'FR', // facilite deriveZoneCode
+            ShippingCountry    = 'FR', // Facilite les tests basés sur la zone
             ShippingPostalCode = '75001',
             ShippingState      = 'Île-de-France'
         );
-        insert a; return a; // insert direct
+        insert a;
+        return a;
     }
 
-    // Surcharge: Consumer par défaut
-    public static Account makeAccount(){ return makeAccount('Consumer'); } // helper simple
+    /**
+     * @description Surcharge pour créer un compte 'Consumer' par défaut.
+     * @return Le Compte 'Consumer' inséré.
+     */
+    public static Account makeAccount(){
+        return makeAccount('Consumer');
+    }
 
-    // Création d'un transporteur avec flags B2B/B2C
+    /**
+     * @description Crée un Transporteur (Carrier__c) avec des compatibilités spécifiques.
+     * @param b2b Supporte les clients 'Business'.
+     * @param b2c Supporte les clients 'Consumer'.
+     * @return Le Transporteur inséré.
+     */
     public static Carrier__c makeCarrier(Boolean b2b, Boolean b2c){
         Carrier__c c = new Carrier__c(
             Name='Carrier ' + String.valueOf(Crypto.getRandomInteger()),
@@ -26,13 +44,24 @@ public class TestDataFactory {
             SupportsBusiness__c = (b2b==null?true:b2b),
             SupportsConsumers__c= (b2c==null?true:b2c)
         );
-        insert c; return c; // insert direct
+        insert c;
+        return c;
     }
 
-    // Surcharge: transporteur compatible par défaut
-    public static Carrier__c makeCarrier(){ return makeCarrier(true,true); } // à la fois B2B et B2C
+    /**
+     * @description Surcharge pour créer un transporteur compatible B2B et B2C par défaut.
+     * @return Le Transporteur inséré.
+     */
+    public static Carrier__c makeCarrier(){
+        return makeCarrier(true,true);
+    }
 
-    // Produit de transport rattaché à un transporteur
+    /**
+     * @description Crée un Produit (Product2) de type service de transport.
+     * @param carrierId L'ID du transporteur associé.
+     * @param level Le niveau de service (ex: 'Standard', 'Express').
+     * @return Le Produit inséré.
+     */
     public static Product2 makeProduct(Id carrierId, String level){
         Product2 p = new Product2(
             Name='Transport ' + (String.isBlank(level)?'Standard':level),
@@ -40,37 +69,86 @@ public class TestDataFactory {
             Carrier__c=carrierId,
             ServiceLevel__c = String.isBlank(level)?'Standard':level
         );
-        insert p; return p; // insert direct
+        insert p;
+        return p;
     }
 
-    // Surcharge: niveau "Standard"
-    public static Product2 makeProduct(Id carrierId){ return makeProduct(carrierId, 'Standard'); } // helper
+    /**
+     * @description Surcharge pour créer un produit de niveau 'Standard' par défaut.
+     * @param carrierId L'ID du transporteur associé.
+     * @return Le Produit inséré.
+     */
+    public static Product2 makeProduct(Id carrierId){
+        return makeProduct(carrierId, 'Standard');
+    }
 
-    // Création d'une PBE complète pour une zone donnée
+    /**
+     * @description Crée une entrée de catalogue de prix (PricebookEntry).
+     * @param pbId L'ID du Pricebook2.
+     * @param productId L'ID du Product2.
+     * @param price Le prix unitaire.
+     * @param zone Le code de la zone (ex: 'FR').
+     * @param leadDays Le délai de livraison en jours.
+     * @return Le PricebookEntry inséré.
+     */
     public static PricebookEntry makePbe(Id pbId, Id productId, Decimal price, String zone, Integer leadDays){
         PricebookEntry pbe = new PricebookEntry(
-            Pricebook2Id = pbId, Product2Id = productId, UnitPrice = price,
-            IsActive = true, UseStandardPrice = false,
-            ZoneCode__c = zone, LeadTimeDays__c = leadDays
+            Pricebook2Id = pbId, 
+            Product2Id = productId, 
+            UnitPrice = price,
+            IsActive = true, 
+            UseStandardPrice = false,
+            ZoneCode__c = zone, 
+            LeadTimeDays__c = leadDays
         );
-        insert pbe; return pbe; // insert direct
+        insert pbe;
+        return pbe;
     }
 
-    // Surcharge: zone FR avec délai 2 jours
+    /**
+     * @description Surcharge pour créer une PBE en zone 'FR' avec un délai de 2 jours par défaut.
+     * @param pbId L'ID du Pricebook2.
+     * @param productId L'ID du Product2.
+     * @param price Le prix unitaire.
+     * @return Le PricebookEntry inséré.
+     */
     public static PricebookEntry makePbe(Id pbId, Id productId, Decimal price){
-        return makePbe(pbId, productId, price, 'FR', 2); // défaut utile pour tests
+        return makePbe(pbId, productId, price, 'FR', 2);
     }
 
-    // Création d'une commande minimale
+    /**
+     * @description Crée une Commande (Order) minimale pour les tests.
+     * @param accountId L'ID du Compte associé.
+     * @param pricebookId L'ID du Pricebook2 associé.
+     * @return La Commande insérée.
+     */
     public static Order makeOrder(Id accountId, Id pricebookId){
-        Order o = new Order(AccountId=accountId, Status='Draft',
-                            EffectiveDate=Date.today(), Pricebook2Id=pricebookId,ShippingCountry='FR');
-        insert o; return o; // insert direct
+        Order o = new Order(
+            AccountId=accountId, 
+            Status='Draft',
+            EffectiveDate=Date.today(), 
+            Pricebook2Id=pricebookId,
+            ShippingCountry='FR'
+        );
+        insert o;
+        return o;
     }
 
-    // Ajoute un item à une commande
+    /**
+     * @description Crée un Article de commande (OrderItem).
+     * @param orderId L'ID de la Commande.
+     * @param pbeId L'ID du PricebookEntry.
+     * @param q La quantité.
+     * @return L'OrderItem inséré.
+     */
     public static OrderItem makeOi(Id orderId, Id pbeId, Integer q){
-        OrderItem oi = new OrderItem(OrderId=orderId, PricebookEntryId=pbeId, Quantity=q, UnitPrice=10);
-        insert oi; return oi; // insert direct
+        OrderItem oi = new OrderItem(
+            OrderId=orderId, 
+            PricebookEntryId=pbeId, 
+            Quantity=q, 
+            UnitPrice=10 // Prix arbitraire, car le coût de livraison est sur la PBE.
+        );
+        insert oi;
+        return oi;
     }
 }

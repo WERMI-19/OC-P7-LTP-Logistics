@@ -1,99 +1,75 @@
 <template>
-    <!-- Affichage SI l'utilisateur N'A PAS la permission custom 'Can_Launch_Delivery' -->
     <template if:false={hasPermission}>
-        <lightning-card title="Lancer la livraison">
-            <div class="slds-p-around_medium">
-                <!-- Message d'accès refusé : vérifier la Permission Set et la Custom Permission -->
-                <lightning-formatted-text value="Accès refusé : permission requise (Can_Launch_Delivery)."></lightning-formatted-text>
-            </div>
-        </lightning-card>
-    </template>
+        </template>
 
-    <!-- Affichage SI l'utilisateur A la permission -->
     <template if:true={hasPermission}>
         <lightning-card title="Lancer la livraison" icon-name="utility:truck">
-            <!-- Indicateur de chargement pendant les appels Apex -->
+            
             <template if:true={loading}>
                 <lightning-spinner alternative-text="Chargement..." size="small"></lightning-spinner>
             </template>
 
-            <!-- (1) Paramètres de recherche : zone, action de chargement, tracking optionnel -->
             <p class="slds-p-horizontal_medium slds-p-top_medium slds-text-heading_small"><b>1. Paramètres de recherche</b></p>
             <div class="slds-p-around_medium slds-grid slds-wrap slds-gutters">
-                <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-3">
-                    <!-- Filtre indicatif par zone (ne bloque pas la compatibilité réelle côté serveur) -->
+                <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2">
                     <lightning-combobox
                         name="zone"
-                        label="Zone de livraison (indicative)"
-                        value={zoneCode}
+                        label="Zone de livraison"
+                        value={selectedZone}
                         options={zoneOptions}
                         onchange={handleZoneChange}>
                     </lightning-combobox>
                 </div>
-
-                <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-3 slds-align_absolute-center">
-                    <!-- Bouton pour déclencher le calcul/chargement des options de transport via Apex -->
+                <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2 slds-align_absolute-center">
                     <lightning-button
-                        label="Charger les options"
+                        label="Charger les options de transport"
                         variant="brand"
                         onclick={loadOptions}
                         disabled={loading}>
                     </lightning-button>
                 </div>
-                
-                <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-3">
-                    <!-- Numéro de suivi facultatif (peut préremplir/écraser avant le lancement) -->
-                    <lightning-input
-                        type="text"
-                        label="Numéro de suivi (optionnel)"
-                        value={trackingNumber}
-                        onchange={handleTrackingChange}>
-                    </lightning-input>
-                </div>
             </div>
 
-            <!-- (2) Résumé des meilleures options calculées (plus rapide / moins chère) -->
-            <p class="slds-p-horizontal_medium slds-text-heading_small"><b>2. Résumé des meilleures options</b></p>
-            <div class="slds-p-horizontal_medium slds-p-bottom_medium">
-                <div class="slds-grid slds-wrap slds-gutters">
-                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2">
-                        <!-- Affichage de l’option la plus rapide -->
-                        <lightning-tile label="Plus rapide" type="media">
-                            <p>{fastestLabel}</p>
-                        </lightning-tile>
-                    </div>
-                    <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2">
-                        <!-- Affichage de l’option la moins chère -->
-                        <lightning-tile label="Moins chère" type="media">
-                            <p>{cheapestLabel}</p>
-                        </lightning-tile>
-                    </div>
-                </div>
-            </div>
-
-            <!-- (3) Sélection du transporteur : visible uniquement si des données compatibles existent -->
             <template if:true={hasData}>
-                <p class="slds-p-horizontal_medium slds-text-heading_small"><b>3. Sélection du transporteur</b></p>
-                <div class="slds-p-around_medium">
-                    <!-- Liste radio des transporteurs compatibles retournés par Apex -->
-                    <lightning-radio-group
-                        name="carriers"
-                        label="Choisissez un transporteur"
-                        options={options}
-                        value={selectedCarrier}
-                        type="radio"
-                        onchange={handleCarrierChange}>
-                    </lightning-radio-group>
+                <p class="slds-p-horizontal_medium slds-text-heading_small"><b>2. Options et Sélection</b></p>
+                <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+                    <div class="slds-grid slds-wrap slds-gutters">
+
+                        <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2">
+                            <div class="slds-box slds-box_x-small slds-theme_default">
+                               <h3 class="slds-text-heading_small slds-m-bottom_small">🚀 Plus rapide</h3>
+                               <p class="slds-m-bottom_small"><b>Option recommandée :</b> {fastestLabel}</p>
+                               <lightning-combobox
+                                    name="carrierSelectionFast"
+                                    label="Changer de transporteur"
+                                    options={fastestOptions} value={selectedCarrier}
+                                    onchange={handleCarrierChange}>
+                               </lightning-combobox>
+                            </div>
+                        </div>
+
+                        <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2">
+                            <div class="slds-box slds-box_x-small slds-theme_default">
+                                <h3 class="slds-text-heading_small slds-m-bottom_small">💰 Moins chère</h3>
+                                <p class="slds-m-bottom_small"><b>Option recommandée :</b> {cheapestLabel}</p>
+                                <lightning-combobox
+                                    name="carrierSelectionCheap"
+                                    label="Changer de transporteur"
+                                    options={cheapestOptions} value={selectedCarrier}
+                                    onchange={handleCarrierChange}>
+                                </lightning-combobox>
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
             </template>
 
-            <!-- (4) Action finale : lancement de la livraison -->
-            <p class="slds-p-horizontal_medium slds-text-heading_small"><b>4. Action finale</b></p>
+            <p class="slds-p-horizontal_medium slds-p-top_medium slds-text-heading_small"><b>3. Action finale</b></p>
             <div class="slds-p-around_medium slds-align_absolute-center">
-                <!-- Bouton final : désactivé tant que les conditions (ex. sélection) ne sont pas remplies -->
                 <lightning-button
                     label="Lancer la livraison"
-                    variant="destructive"
+                    variant="brand"
                     onclick={handleLaunch}
                     disabled={disableLaunch}>
                 </lightning-button>

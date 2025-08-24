@@ -2,7 +2,7 @@
 .DS_Store
 
 # Paramètres de développement
-jsconfig.json
+.jsconfig.json
 .eslintrc.json
 
 # Salesforce DX metadata
