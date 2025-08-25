@@ -1,21 +1,18 @@
 @IsTest
-/**
- * @description Classe utilitaire pour créer des données de test cohérentes.
- * Centralise la logique de création des enregistrements pour garantir que les tests
- * sont basés sur des données valides conformes au modèle de données (MDD).
- */
+//Centralise la logique de création des enregistrements sur la base du modèle de données (MDD).
+
 public class TestDataFactory {
 
     /**
      * @description Crée un Compte (Account) avec un type de client spécifique.
-     * @param customerType 'Consumer' ou 'Business'.
+     * @param customerType 'Particulier' ou 'Professionnel'.
      * @return Le Compte inséré.
      */
     public static Account makeAccount(String customerType){
         Account a = new Account(
             Name = 'Acme ' + customerType + ' ' + String.valueOf(Crypto.getRandomInteger()),
-            CustomerType__c    = String.isBlank(customerType) ? 'Consumer' : customerType,
-            ShippingCountry    = 'FR', // Facilite les tests basés sur la zone
+            CustomerType__c    = String.isBlank(customerType) ? 'Particulier' : customerType,
+            ShippingCountry    = 'FR', // pour les tests basés sur la zone
             ShippingPostalCode = '75001',
             ShippingState      = 'Île-de-France'
         );
@@ -24,17 +21,17 @@ public class TestDataFactory {
     }
 
     /**
-     * @description Surcharge pour créer un compte 'Consumer' par défaut.
+     * @description Surcharge pour créer un compte 'Particulier' par défaut.
      * @return Le Compte 'Consumer' inséré.
      */
     public static Account makeAccount(){
-        return makeAccount('Consumer');
+        return makeAccount('Particulier');
     }
 
     /**
      * @description Crée un Transporteur (Carrier__c) avec des compatibilités spécifiques.
-     * @param b2b Supporte les clients 'Business'.
-     * @param b2c Supporte les clients 'Consumer'.
+     * @param b2b Supporte les clients 'Professionnel'.
+     * @param b2c Supporte les clients 'Particulier'.
      * @return Le Transporteur inséré.
      */
     public static Carrier__c makeCarrier(Boolean b2b, Boolean b2c){

@@ -1,97 +1,96 @@
-// Classe: OrderService – services métier pour le LWC "Lancer une livraison"
+// Services métier pour le LWC "Lancer une livraison"
 public with sharing class OrderService {
 
-    // Flag de test: autorise à ignorer la Custom Permission pendant les tests unitaires
-    @TestVisible public static Boolean TEST_BYPASS_PERMISSION = false; // switch test
+    @TestVisible public static Boolean TEST_BYPASS_PERMISSION = false;
 
-    // DTO retourné au LWC: liste compatible + la plus rapide + la moins chère
+    // DTO retourné au LWC
     public class OptionsDTO {
-        @AuraEnabled public List<TransporterSelector.TransportOption> compatible; // toutes les options
-        @AuraEnabled public TransporterSelector.TransportOption fastest;          // délai min
-        @AuraEnabled public TransporterSelector.TransportOption cheapest;         // prix min
-        @AuraEnabled public String shippingCountry; // <-- LIGNE AJOUTÉE
+        @AuraEnabled public List<TransporterSelector.TransportOption> compatible;
+        @AuraEnabled public TransporterSelector.TransportOption fastest;
+        @AuraEnabled public TransporterSelector.TransportOption cheapest;
+        @AuraEnabled public String shippingCountry;
+        @AuraEnabled public Integer totalQuantity;  
     }
 
-    // Vérifie la permission "Can_Launch_Delivery" (ou bypass si test)
+    // Vérifie la permission "Can_Launch_Delivery"
     private static void ensurePermission(){
-        if(TEST_BYPASS_PERMISSION) return; // autorise en test
+        if(TEST_BYPASS_PERMISSION) return;
         if(!FeatureManagement.checkPermission('Can_Launch_Delivery')){
-            throw new AuraHandledException('Accès refusé: permission requise.'); // message lisible
+            throw new AuraHandledException('Accès refusé: la permission requise est manquante.');
         }
     }
 
-    // Calcule les options transport pour une commande (param "refreshKey" casse le cache)
+    // Calcule les options de transport pour une commande donnée
     @AuraEnabled(cacheable=true)
     public static OptionsDTO computeOptions(Id orderId, String refreshKey){
-        if(orderId == null) throw new AuraHandledException('Order Id requis'); // garde-fou
+        if(orderId == null) throw new AuraHandledException('Order Id requis');
 
-        // <-- BLOC AJOUTÉ : Récupérer la commande pour son pays de livraison
         Order o = [SELECT Id, ShippingCountry FROM Order WHERE Id = :orderId LIMIT 1];
-
-        List<TransporterSelector.TransportOption> allOpts = TransporterSelector.forOrder(orderId); // collecte
-        TransporterSelector.TransportOption fastest, cheapest; // init
+        List<TransporterSelector.TransportOption> allOpts = TransporterSelector.forOrder(orderId);
+        
+        TransporterSelector.TransportOption fastest, cheapest;
         for(TransporterSelector.TransportOption opt : allOpts){
-            if(cheapest == null || (opt.price != null && opt.price < cheapest.price)) cheapest = opt; // moins chère
-            if(fastest  == null || (opt.leadTimeDays != null && opt.leadTimeDays < fastest.leadTimeDays)) fastest  = opt; // plus rapide
+            if(cheapest == null || (opt.price != null && opt.price < cheapest.price)) cheapest = opt;
+            if(fastest  == null || (opt.leadTimeDays != null && opt.leadTimeDays < fastest.leadTimeDays)) fastest  = opt;
         }
-        OptionsDTO dto = new OptionsDTO(); // construction du DTO
-        dto.compatible = allOpts; // liste
-        dto.fastest    = fastest; // plus rapide
-        dto.cheapest   = cheapest; // moins chère
-        dto.shippingCountry = o.ShippingCountry; // <-- LIGNE AJOUTÉE
 
-        return dto; // retour LWC
+        OptionsDTO dto = new OptionsDTO();
+        dto.compatible = allOpts;
+        dto.fastest    = fastest;
+        dto.cheapest   = cheapest;
+        dto.shippingCountry = o.ShippingCountry; 
+        return dto;
     }
 
-    // Lance la livraison: crée Shipment__c avec coût/délai/ETA/tracking à partir du carrier choisi
+    /**
+     * @description Crée un enregistrement Shipment__c basé sur le service exact (PricebookEntry) choisi par l'utilisateur.
+     * @param orderId L'ID de la commande.
+     * @param pbeId L'ID de la PricebookEntry sélectionnée dans l'interface.
+     * @param trackingNumber Le numéro de suivi optionnel.
+     * @return Le Shipment__c créé.
+     */
     @AuraEnabled
-    public static Shipment__c launchDelivery(Id orderId, Id carrierId, String trackingNumber){
-        if(orderId == null || carrierId == null) throw new AuraHandledException('Order Id et Carrier Id requis'); // input
-        ensurePermission(); // protège l’action critique
+    public static Shipment__c launchDelivery(Id orderId, Id pbeId, String trackingNumber){
+        if(orderId == null || pbeId == null) throw new AuraHandledException('Order Id et PricebookEntry Id requis');
+        ensurePermission();
 
-        // Charge l'ordre (Pricebook + adresse) et dérive la zone (FR/BE/CH/LU)
         Order o = [SELECT Id, Pricebook2Id, ShippingCountry, ShippingPostalCode, ShippingState
-                   FROM Order WHERE Id = :orderId LIMIT 1]; // requête ciblée
-        String zone = TransporterSelector.deriveZoneCode(o); // calcule la zone
-        if(String.isBlank(zone))   throw new AuraHandledException('Pays de livraison manquant ou non supporté'); // contrôle zone
-        if(o.Pricebook2Id == null) throw new AuraHandledException('La commande n\'a pas de catalogue de prix');   // contrôle PB
+                   FROM Order WHERE Id = :orderId LIMIT 1];
 
-        // Sélectionne la meilleure PBE pour ce transporteur dans la zone de l'ordre (tri prix ASC)
+        String zone = TransporterSelector.deriveZoneCode(o);
+        if(String.isBlank(zone)) throw new AuraHandledException('Pays de livraison manquant ou non supporté');
+        
+        // Sélectionne directement l'entrée de catalogue choisie par l'utilisateur, ce qui élimine toute ambiguïté.
         PricebookEntry chosen = [
-            SELECT Id, UnitPrice, LeadTimeDays__c, Product2.ServiceLevel__c
+            SELECT Id, UnitPrice, LeadTimeDays__c, Product2.Carrier__c
             FROM PricebookEntry
-            WHERE Pricebook2Id = :o.Pricebook2Id
-              AND ZoneCode__c   = :zone
-              AND IsActive      = true
-              AND Product2.Carrier__c = :carrierId
-            ORDER BY UnitPrice ASC NULLS LAST
+            WHERE Id = :pbeId AND IsActive = true
             LIMIT 1
-        ]; // PBE choisie
+        ];
 
-        Integer leadDays = (chosen.LeadTimeDays__c == null) ? 0 : Integer.valueOf(chosen.LeadTimeDays__c); // délai jours
+        Integer leadDays = (chosen.LeadTimeDays__c == null) ? 0 : Integer.valueOf(chosen.LeadTimeDays__c);
 
-        // Construit la Shipment__c complète selon le MDD
         Shipment__c sh = new Shipment__c(
-            Order__c                   = o.Id,                              // relation Order
-            Carrier__c                 = carrierId,                         // relation Carrier
-            Status__c                  = 'Created',                         // statut initial
-            ShipDate__c                = Date.today(),                      // date d'expédition
-            ZoneCode__c                = zone,                               // zone de livraison
-            DestinationCountry__c      = o.ShippingCountry,                 // pays destination
-            DestinationRegion__c       = o.ShippingState,                   // région destination
-            DestinationPostalCode__c   = o.ShippingPostalCode,              // code postal destination
-            ShippingCost__c            = chosen.UnitPrice,                  // coût transport
-            EstimatedLeadTimeHours__c  = leadDays * 24,                     // délai en heures
-            EstimatedDeliveryDate__c   = Date.today().addDays(leadDays),    // ETA
-            TrackingNumber__c          = String.isBlank(trackingNumber) ? generateTracking(orderId) : trackingNumber.trim() // tracking
-        ); // enregistrement prêt
+            Order__c                   = o.Id,
+            Carrier__c                 = chosen.Product2.Carrier__c, // L'ID du transporteur vient du service choisi
+            Status__c                  = 'Created',
+            ShipDate__c                = Date.today(),
+            ZoneCode__c                = zone,
+            DestinationCountry__c      = o.ShippingCountry,
+            DestinationRegion__c       = o.ShippingState,
+            DestinationPostalCode__c   = o.ShippingPostalCode,
+            ShippingCost__c            = chosen.UnitPrice,
+            EstimatedLeadTimeHours__c  = leadDays * 24,
+            EstimatedDeliveryDate__c   = Date.today().addDays(leadDays),
+            TrackingNumber__c          = String.isBlank(trackingNumber) ? generateTracking(orderId) : trackingNumber.trim()
+        ); 
 
-        insert sh; // DML unique pour créer la livraison
-        return sh; // renvoie l'enregistrement créé
+        insert sh;
+        return sh;
     }
 
-    // Génère un numéro de tracking lisible et unique (Id partiel + timestamp)
+    // Génère un numéro de suivi unique
     private static String generateTracking(Id orderId){
-        return 'SHIP-' + String.valueOf(orderId).right(5) + '-' + Datetime.now().getTime(); // format simple
+        return 'SHIP-' + String.valueOf(orderId).right(5) + '-' + Datetime.now().getTime();
     }
 }

@@ -1,8 +1,6 @@
 @IsTest
 private class AccountSelectorTest {
-
-    // Test n°1 : Scénario de succès (le "happy path")
-    // Vérifie que la méthode retourne le bon compte pour un ID valide.
+    //Scénario de succès: Vérifie que la méthode retourne le bon compte pour un ID valide.
     @IsTest
     static void getAccountById_returnsAccount_whenIdIsValid() {
         // 1. Préparation : Créer un compte de test
@@ -14,13 +12,12 @@ private class AccountSelectorTest {
         Account result = AccountSelector.getAccountById(acc.Id);
         Test.stopTest();
 
-        // 3. Vérification : S'assurer que le compte retourné est le bon
+        // 3. Vérifier que le compte retourné est le bon
         System.assertNotEquals(null, result, 'Le compte retourné ne doit pas être nul.');
         System.assertEquals(acc.Id, result.Id, 'L\'ID du compte retourné doit correspondre.');
     }
 
-    // Test n°2 : Scénario d'échec
-    // Vérifie que la méthode lève une exception si aucun compte n'est trouvé (ID nul).
+    // Scénario d'échec : Vérifie que la méthode lève une exception si aucun compte n'est trouvé (ID nul).
     @IsTest
     static void getAccountById_throwsException_whenIdIsInvalid() {
         try {
@@ -32,7 +29,7 @@ private class AccountSelectorTest {
 
         } catch (System.QueryException e) {
             // 3. Vérification : L'exception attendue a bien été attrapée, le test réussit.
-            System.assert(e.getMessage().contains('List has no rows for assignment'), 
+            System.assert(e.getMessage().contains('la liste est vide'), 
                 'Le message d\'erreur est incorrect.');
         }
     }

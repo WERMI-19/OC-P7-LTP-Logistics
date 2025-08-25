@@ -10,7 +10,7 @@ export default class LtpLaunchDelivery extends LightningElement {
     @api recordId;
     loading = false;
     dto;
-    selectedCarrier = null;
+    selectedPbeId = null; // On stocke l'ID du service (PricebookEntry), pas du transporteur
     selectedZone;
 
     optionsLoaded = false;
@@ -29,40 +29,38 @@ export default class LtpLaunchDelivery extends LightningElement {
         }
     }
 
-    // =================================================================================================
     // Getters
-    // =================================================================================================
 
     get hasPermission() { return hasLaunchPermission === true; }
     get hasData() { return this.dto && this.dto.compatible && this.dto.compatible.length > 0; }
     get fastestLabel() { if (!this.dto?.fastest) return '—'; const f = this.dto.fastest; return `${f.carrierName} (${f.price}€, ${f.leadTimeDays} jours)`; }
     get cheapestLabel() { if (!this.dto?.cheapest) return '—'; const c = this.dto.cheapest; return `${c.carrierName} (${c.price}€, ${c.leadTimeDays} jours)`; }
     
+    // La valeur envoyée est maintenant pbeId pour être précise
     get fastestOptions() {
         return this.fastestOptionsList.map(opt => ({
             label: `${opt.carrierName} (${opt.price}€, ${opt.leadTimeDays} jours)`,
-            value: opt.carrierId
+            value: opt.pbeId
         }));
     }
 
+    // La valeur envoyée est maintenant pbeId pour être précise
     get cheapestOptions() {
         return this.cheapestOptionsList.map(opt => ({
             label: `${opt.carrierName} (${opt.price}€, ${opt.leadTimeDays} jours)`,
-            value: opt.carrierId
+            value: opt.pbeId
         }));
     }
 
     get disableLoadOptions() { return !this.selectedZone || this.loading; }
-    get disableLaunch() { return !this.optionsLoaded || !this.selectedCarrier || this.loading; }
+    get disableLaunch() { return !this.optionsLoaded || !this.selectedPbeId || this.loading; }
     get zoneOptions() { return [{ label: 'France', value: 'FR' }, { label: 'Belgique', value: 'BE' }, { label: 'Suisse', value: 'CH' }, { label: 'Luxembourg', value: 'LU' }]; }
 
-    // =================================================================================================
     // Logique Métier (Appels Apex et Traitement)
-    // =================================================================================================
 
     async loadOptions() {
         if (!this.selectedZone) {
-            this.showToast('Action requise', 'Veuillez sélectionner une zone de livraison avant de charger les options.', 'warning');
+            this.showToast('Action requise', 'Veuillez sélectionner une zone de livraison.', 'warning');
             return;
         }
         
@@ -71,12 +69,10 @@ export default class LtpLaunchDelivery extends LightningElement {
         this.resetSelection();
 
         try {
-            const result = await computeOptions({ orderId: this.recordId, selectedZone: this.selectedZone, refreshKey: new Date().getTime() });
-            this.dto = result;
+            this.dto = await computeOptions({ orderId: this.recordId, refreshKey: new Date().getTime() });
 
             if (this.hasData) {
                 this.processAndCategorizeOptions();
-                // ON NE FAIT PLUS DE SÉLECTION PAR DÉFAUT ICI
                 this.showToast('Succès', `${this.dto.compatible.length} options chargées.`, 'success');
                 this.optionsLoaded = true;
             } else {
@@ -91,6 +87,7 @@ export default class LtpLaunchDelivery extends LightningElement {
     }
     
     processAndCategorizeOptions() {
+        // Votre logique de catégorisation est conservée
         const compatibleOptions = [...this.dto.compatible];
         if (!compatibleOptions || compatibleOptions.length === 0) return;
 
@@ -114,7 +111,7 @@ export default class LtpLaunchDelivery extends LightningElement {
             if (cheapest.length === 0 && fastest.length > 0) {
                 let cheapestOfFastest = fastest.reduce((prev, curr) => prev.price < curr.price ? prev : curr);
                 cheapest.push(cheapestOfFastest);
-                fastest = fastest.filter(opt => opt.carrierId !== cheapestOfFastest.carrierId);
+                fastest = fastest.filter(opt => opt.pbeId !== cheapestOfFastest.pbeId);
             }
             else if (fastest.length === 0 && cheapest.length > 0) {
                 let fastestOfCheapest = cheapest.reduce((prev, curr) => {
@@ -123,17 +120,12 @@ export default class LtpLaunchDelivery extends LightningElement {
                     return prev;
                 });
                 fastest.push(fastestOfCheapest);
-                cheapest = cheapest.filter(opt => opt.carrierId !== fastestOfCheapest.carrierId);
+                cheapest = cheapest.filter(opt => opt.pbeId !== fastestOfCheapest.pbeId);
             }
         }
 
         cheapest.sort((a, b) => a.price - b.price);
-        fastest.sort((a, b) => {
-            if (a.leadTimeDays !== b.leadTimeDays) {
-                return a.leadTimeDays - b.leadTimeDays;
-            }
-            return a.price - b.price;
-        });
+        fastest.sort((a, b) => (a.leadTimeDays - b.leadTimeDays) || (a.price - b.price));
 
         this.cheapestOptionsList = cheapest;
         this.fastestOptionsList = fastest;
@@ -150,7 +142,7 @@ export default class LtpLaunchDelivery extends LightningElement {
     }
     
     resetSelection() {
-        this.selectedCarrier = null;
+        this.selectedPbeId = null;
         this.selectedValueFast = null;
         this.selectedValueCheap = null;
         this.fastestOptionsList = [];
@@ -159,26 +151,31 @@ export default class LtpLaunchDelivery extends LightningElement {
     }
 
     handleCarrierChange(event) {
-        const newCarrierId = event.detail.value;
+        const newPbeId = event.detail.value;
         const sourceName = event.target.name;
-        this.selectedCarrier = newCarrierId;
+        this.selectedPbeId = newPbeId;
+
         if (sourceName === 'carrierSelectionFast') {
-            this.selectedValueFast = newCarrierId;
+            this.selectedValueFast = newPbeId;
             this.selectedValueCheap = null;
         } else if (sourceName === 'carrierSelectionCheap') {
-            this.selectedValueCheap = newCarrierId;
+            this.selectedValueCheap = newPbeId;
             this.selectedValueFast = null;
         }
     }
     
     async handleLaunch() {
-        if (!this.selectedCarrier) {
-            this.showToast('Action requise', 'Veuillez sélectionner un transporteur.', 'warning');
+        if (!this.selectedPbeId) {
+            this.showToast('Action requise', 'Veuillez sélectionner une option de livraison.', 'warning');
             return;
         }
         this.loading = true;
         try {
-            await launchDelivery({ orderId: this.recordId, carrierId: this.selectedCarrier });
+            await launchDelivery({ 
+                orderId: this.recordId, 
+                pbeId: this.selectedPbeId, 
+                trackingNumber: null 
+            });
             this.showToast('Succès', 'La livraison a été créée avec succès !', 'success');
         } catch (error) {
             this.showToast('Erreur de lancement', error.body?.message || error.message, 'error');

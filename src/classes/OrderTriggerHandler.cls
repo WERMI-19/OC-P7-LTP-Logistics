@@ -1,49 +1,45 @@
-// Classe: OrderTriggerHandler - applique les règles métier sur Order
-// Règle principale: min d'items pour activer une commande (3 pour Consumer, 5 pour Business)
-
+// Règle principale: min d'items pour activer une commande (3 pour Particulier, 5 pour Professionnel)
 public with sharing class OrderTriggerHandler {
 
     // Valide la contrainte "minimum d'items" à l'activation
     public static void validateMinimumItems(List<Order> orders){
-        // Prépare les ensembles/Maps pour requêtes groupées
-        Set<Id> toCheck = new Set<Id>(); // ids d'ordres à valider
-        Set<Id> accountIds = new Set<Id>(); // ids de comptes liés
+        Set<Id> toCheck = new Set<Id>();
+        Set<Id> accountIds = new Set<Id>();
 
-        // Filtre uniquement les ordres ciblés (status 'Activated')
+        // Filtre uniquement les ordres qui viennent d'être activés
         for(Order o : orders){
-            if(o.Status == 'Activated'){ // cible uniquement l'activation
-                toCheck.add(o.Id); // stocke l'Id pour agrégation
-                if(o.AccountId != null) accountIds.add(o.AccountId); // garde l'account
+            if(o.Status == 'Activated'){
+                toCheck.add(o.Id);
+                if(o.AccountId != null) accountIds.add(o.AccountId);
             }
         }
 
-        // Rien à faire si aucun ordre activé
-        if(toCheck.isEmpty()) return; // sortie anticipée
+        if(toCheck.isEmpty()) return; // Sortie anticipée si aucun ordre concerné
 
-        // Compte les OrderItem par Order (agrégation SOQL efficace)
-        Map<Id, Integer> counts = new Map<Id, Integer>(); // map OrderId -> count
+        // Compte les OrderItem par Order via une agrégation SOQL
+        Map<Id, Integer> counts = new Map<Id, Integer>();
         for(AggregateResult ar : [
             SELECT OrderId oid, COUNT(Id) c FROM OrderItem
             WHERE OrderId IN :toCheck GROUP BY OrderId
         ]){
-            counts.put((Id)ar.get('oid'), (Integer)ar.get('c')); // enregistre le total
+            counts.put((Id)ar.get('oid'), (Integer)ar.get('c'));
         }
 
-        // Charge le type de client pour déterminer le seuil 3/5
+        // Charge le type de client pour déterminer le seuil (3 ou 5)
         Map<Id, Account> accs = new Map<Id, Account>([
             SELECT Id, CustomerType__c FROM Account WHERE Id IN :accountIds
-        ]); // carte des comptes
+        ]);
 
         // Applique la règle et remonte une erreur bloquante si non conforme
         for(Order o : orders){
-            if(o.Status == 'Activated'){ // uniquement à l'activation
-                Account a = accs.get(o.AccountId); // récupère le compte
-                Integer minItems = (a != null && a.CustomerType__c == 'Business') ? 5 : 3; // calcule le seuil
-                Integer actual   = counts.get(o.Id); // nombre réel d'items
+            if(o.Status == 'Activated'){
+                Account a = accs.get(o.AccountId);
+                Integer minItems = (a != null && a.CustomerType__c == 'Professionnel') ? 5 : 3;
+                Integer actual   = counts.get(o.Id);
 
-                if(actual == null || actual < minItems){ // vérifie la contrainte
-                    String kind = (a!=null && a.CustomerType__c=='Business') ? 'compte pro' : 'client particulier'; // type
-                    o.addError('Un ' + kind + ' doit contenir au moins ' + minItems + ' produits pour être activé.'); // message clair
+                if(actual == null || actual < minItems){
+                    String kind = (a != null && a.CustomerType__c == 'Professionnel') ? 'compte pro' : 'client particulier';
+                    o.addError('Un ' + kind + ' doit contenir au moins ' + minItems + ' produits pour être activé.');
                 }
             }
         }

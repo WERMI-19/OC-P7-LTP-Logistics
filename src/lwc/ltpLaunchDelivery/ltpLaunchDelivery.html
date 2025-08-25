@@ -1,11 +1,13 @@
 <template>
     <template if:false={hasPermission}>
+        <!-- Affiché quand l'utilisateur n'a pas la permission -->
         </template>
 
     <template if:true={hasPermission}>
         <lightning-card title="Lancer la livraison" icon-name="utility:truck">
             
             <template if:true={loading}>
+                <!-- Petit indicateur pendant le chargement -->
                 <lightning-spinner alternative-text="Chargement..." size="small"></lightning-spinner>
             </template>
 
@@ -14,13 +16,14 @@
                 <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2">
                     <lightning-combobox
                         name="zone"
-                        label="Zone de livraison"
+                        label="Pays De Destination"
                         value={selectedZone}
                         options={zoneOptions}
                         onchange={handleZoneChange}>
                     </lightning-combobox>
                 </div>
                 <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2 slds-align_absolute-center">
+                    <!-- Bouton pour récupérer les options de transport -->
                     <lightning-button
                         label="Charger les options de transport"
                         variant="brand"
@@ -31,10 +34,12 @@
             </div>
 
             <template if:true={hasData}>
+                <!-- Cette section apparaît seulement quand des options sont disponibles -->
                 <p class="slds-p-horizontal_medium slds-text-heading_small"><b>2. Options et Sélection</b></p>
                 <div class="slds-p-horizontal_medium slds-p-bottom_medium">
                     <div class="slds-grid slds-wrap slds-gutters">
 
+                        <!-- Zone "Plus rapide" : meilleure option en temps -->
                         <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2">
                             <div class="slds-box slds-box_x-small slds-theme_default">
                                <h3 class="slds-text-heading_small slds-m-bottom_small">🚀 Plus rapide</h3>
@@ -49,6 +54,7 @@
                             </div>
                         </div>
 
+                        <!-- Zone "Moins chère" : meilleure option en coût -->
                         <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2">
                             <div class="slds-box slds-box_x-small slds-theme_default">
                                 <h3 class="slds-text-heading_small slds-m-bottom_small">💰 Moins chère</h3>
@@ -69,6 +75,7 @@
 
             <p class="slds-p-horizontal_medium slds-p-top_medium slds-text-heading_small"><b>3. Action finale</b></p>
             <div class="slds-p-around_medium slds-align_absolute-center">
+                <!-- Bouton final : lance réellement la livraison -->
                 <lightning-button
                     label="Lancer la livraison"
                     variant="brand"

@@ -1,9 +1,5 @@
 @IsTest
 // Tests du trigger Order -> règle "minimum d'items" (3 Consumer / 5 Business)
-// Méthode: on utilise le handler directement via insert/update en situation réelle
-// Cas: (1) Consumer avec 2 items -> erreur ; (2) Business avec 5 items -> OK
-// Données: PB standard + PBE simple pour permettre la création d'OrderItem
-// Message: valide que l'erreur contient la contrainte (non vide)
 public class OrderTriggerHandlerTest {
 
     @IsTest
